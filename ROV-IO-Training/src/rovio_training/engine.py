@@ -1,4 +1,4 @@
-"""训练、断点恢复、checkpoint 管理和逐 epoch 实时实验报告。"""
+"""Training, resumption, checkpoint management, and live per-epoch experiment reports."""
 from __future__ import annotations
 
 import csv
@@ -80,16 +80,16 @@ def _append_metrics(run_dir: Path, row: dict[str, Any]) -> None:
 
 def _print_epoch(row: dict[str, Any], best_epoch: int | None, best_metric: float) -> None:
     tag = " *BEST*" if row["is_best"] else ""
-    print(f"\n[Epoch {row['epoch']:03d} | 阶段 {row['phase']}] 训练：总损失={row['train_loss']:.6f}，"
-          f"Huber={row['train_huber']:.6f}，NLL={row['train_nll']:.6f}，学习率={row['learning_rate']:.3e}，"
-          f"梯度范数={row['grad_norm']:.3f}，耗时={row['epoch_seconds']:.1f}s", flush=True)
-    print(f"  验证总览：联合 XY RMSE={row['val_body_xy_rmse']:.6f} m/s，"
-          f"三轴总 RMSE={row['val_all_axis_rmse']:.6f}{tag}", flush=True)
+    print(f"\n[Epoch {row['epoch']:03d} | Phase {row['phase']}] Training: total_loss={row['train_loss']:.6f}, "
+          f"Huber={row['train_huber']:.6f}, NLL={row['train_nll']:.6f}, learning_rate={row['learning_rate']:.3e}, "
+          f"grad_norm={row['grad_norm']:.3f}, elapsed={row['epoch_seconds']:.1f}s", flush=True)
+    print(f"  Validation: joint XY RMSE={row['val_body_xy_rmse']:.6f} m/s, "
+          f"all-axis RMSE={row['val_all_axis_rmse']:.6f}{tag}", flush=True)
     for axis, unit in (("vx", "m/s"), ("vy", "m/s"), ("r", "rad/s")):
-        print(f"  {axis:>2}：RMSE={row[f'val_{axis}_rmse']:.6f} {unit}，"
-              f"MAE={row[f'val_{axis}_mae']:.6f}，Bias={row[f'val_{axis}_bias']:.6f}，"
-              f"NLL={row[f'val_{axis}_nll']:.6f}，校准比={row[f'val_{axis}_calibration']:.3f}", flush=True)
-    print(f"  当前最佳：验证 XY RMSE={best_metric:.6f} m/s（epoch {best_epoch}）", flush=True)
+        print(f"  {axis:>2}: RMSE={row[f'val_{axis}_rmse']:.6f} {unit}, "
+              f"MAE={row[f'val_{axis}_mae']:.6f}, Bias={row[f'val_{axis}_bias']:.6f}, "
+              f"NLL={row[f'val_{axis}_nll']:.6f}, calibration_ratio={row[f'val_{axis}_calibration']:.3f}", flush=True)
+    print(f"  Best so far: validation XY RMSE={best_metric:.6f} m/s (epoch {best_epoch})", flush=True)
 
 
 def _tensorboard(writer: SummaryWriter, row: dict[str, Any]) -> None:
@@ -105,7 +105,7 @@ def _tensorboard(writer: SummaryWriter, row: dict[str, Any]) -> None:
 
 def _build_datasets(cfg: dict[str, Any], manifest_path: str | Path, data_root: str | Path,
                     normalizer: dict[str, np.ndarray] | None = None) -> tuple[V20WindowDataset, V20WindowDataset, dict[str, list[Path]]]:
-    # train 唯一允许拟合归一化统计；val/demo 始终读取该训练统计，杜绝统计泄漏。
+    # Fit normalization statistics on train only; val/demo always reuse them to prevent statistical leakage.
     splits = resolve_manifest(manifest_path, data_root)
     train = V20WindowDataset(splits["train"], cfg, normalizer)
     if normalizer is None: normalizer = train.fit_normalizer()
@@ -128,7 +128,7 @@ def _train_epoch(model: torch.nn.Module, loader: DataLoader, optimizer: AdamW, c
         inputs = [batch[key].to(device, non_blocking=device.type == "cuda") for key in model.input_keys]
         mean, log_std = model(*inputs)
         loss, details = hybrid_loss(mean, log_std, target, phase, float(options["huber_delta"]), float(options["nll_weight"]))
-        # set_to_none 可减少梯度张量写入；梯度裁剪用于抑制偶发的大梯度更新。
+        # set_to_none reduces gradient-tensor writes; gradient clipping limits occasional large updates.
         optimizer.zero_grad(set_to_none=True); loss.backward()
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), float(options["grad_clip_norm"]))
         optimizer.step()
@@ -155,10 +155,10 @@ def create_run_dir(output_root: str | Path, experiment: str, seed: int) -> Path:
 
 
 def _dataset_inventory(splits: dict[str, list[Path]], data_root: str | Path) -> dict[str, Any]:
-    """为训练数据生成强校验清单。
+    """Generate a strong integrity manifest for training data.
 
-    每个 processed 数据文件都记录 SHA-256。这样即使文件路径相同、内容被覆盖，恢复训练或
-    重新评估时也会明确报错，而不是悄悄混用不同版本的数据。
+    Record SHA-256 for every processed file. If content is overwritten at the same path, resuming training
+    or reevaluating fails explicitly instead of silently mixing dataset versions.
     """
     root = Path(data_root)
     records: dict[str, list[dict[str, Any]]] = {}
@@ -173,15 +173,15 @@ def _dataset_inventory(splits: dict[str, list[Path]], data_root: str | Path) -> 
 
 
 def _assert_dataset_snapshot(run_dir: Path, manifest_path: str | Path, data_root: str | Path, expected_hash: str) -> None:
-    """恢复或手动评估前，阻止“同名数据但内容变了”的隐性不可复现问题。"""
+    """Prevent hidden reproducibility failures from changed content at unchanged paths before resumption or evaluation."""
     current = _dataset_inventory(resolve_manifest(manifest_path, data_root), data_root)
     if current["snapshot_sha256"] != expected_hash:
         atomic_json(run_dir / "data_snapshot_mismatch.json", {"expected": expected_hash, "actual": current["snapshot_sha256"]})
-        raise RuntimeError("当前数据集与该实验开始时的 SHA-256 清单不同；请使用原始数据版本，或新建训练实验")
+        raise RuntimeError("The dataset differs from the SHA-256 manifest saved at training start; use the original version or start a new experiment")
 
 
 def _append_resume_event(run_dir: Path, invocation: list[str]) -> None:
-    """追加恢复历史；不修改原始配置、模型或先前指标。"""
+    """Append resumption history without modifying the original configuration, model, or previous metrics."""
     path = run_dir / "resume_history.jsonl"
     event = {"time_unix": time.time(), "invocation": invocation}
     with path.open("a", encoding="utf-8") as handle:
@@ -190,9 +190,9 @@ def _append_resume_event(run_dir: Path, invocation: list[str]) -> None:
 
 def train_new(cfg: dict[str, Any], config_source: str | Path, manifest_path: str | Path, data_root: str | Path,
               output_root: str | Path, project_root: str | Path, invocation: list[str] | None = None) -> Path:
-    """启动新实验。
+    """Start a new experiment.
 
-    每次调用都会创建新目录，避免新手误覆盖一个已经训练完成的模型。
+    Each call creates a new directory to avoid overwriting an already trained model.
     """
     run_dir = create_run_dir(output_root, str(cfg["experiment"]["name"]), int(cfg["experiment"]["seed"]))
     _initialize_new_run(run_dir, cfg, config_source, manifest_path, data_root, project_root, invocation or [])
@@ -202,11 +202,11 @@ def train_new(cfg: dict[str, Any], config_source: str | Path, manifest_path: str
 
 def _initialize_new_run(run_dir: Path, cfg: dict[str, Any], config_source: str | Path, manifest_path: str | Path,
                         data_root: str | Path, project_root: str | Path, invocation: list[str]) -> None:
-    """冻结本次训练依赖，保证以后能知道“这个 best.pt 从何而来”。"""
+    """Freeze training dependencies so the provenance of best.pt remains traceable."""
     device = choose_device(cfg["experiment"]["device"])
     atomic_yaml(run_dir / "resolved_config.yaml", cfg)
     paths = resolve_manifest(manifest_path, data_root)
-    # 清单按字节复制，而非重新序列化 YAML，确保 SHA-256 和源文件完全对应。
+    # Copy the manifest byte-for-byte instead of reserializing YAML so its SHA-256 matches the source.
     manifest_snapshot = run_dir / "manifest_snapshot.yaml"
     temporary_manifest = manifest_snapshot.with_suffix(".yaml.tmp")
     shutil.copyfile(manifest_path, temporary_manifest)
@@ -228,11 +228,11 @@ def resume_run(run_dir: str | Path, data_root: str | Path, project_root: str | P
     run_dir = Path(run_dir); cfg_path = run_dir / "resolved_config.yaml"; metadata_path = run_dir / "run_metadata.json"
     manifest_snapshot = run_dir / "manifest_snapshot.yaml"
     if not cfg_path.is_file() or not metadata_path.is_file() or not manifest_snapshot.is_file() or not (run_dir / "last.pt").is_file():
-        raise FileNotFoundError("resume 需要包含 resolved_config.yaml、manifest_snapshot.yaml、run_metadata.json 和 last.pt 的运行目录")
+        raise FileNotFoundError("resume requires a run directory containing resolved_config.yaml, manifest_snapshot.yaml, run_metadata.json, and last.pt")
     from .config import load_config
     cfg = load_config(cfg_path); metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     if sha256_file(manifest_snapshot) != metadata["manifest_sha256"]:
-        raise RuntimeError("运行目录内的 manifest_snapshot.yaml 被修改，拒绝恢复以防数据划分不一致")
+        raise RuntimeError("manifest_snapshot.yaml was modified; refusing to resume with inconsistent data splits")
     _assert_dataset_snapshot(run_dir, manifest_snapshot, data_root, metadata["data_snapshot_sha256"])
     _append_resume_event(run_dir, invocation or [])
     _train(run_dir, cfg, manifest_snapshot, data_root, project_root, resume=True)
@@ -273,7 +273,7 @@ def _train(run_dir: Path, cfg: dict[str, Any], manifest_path: str | Path, data_r
                     atomic_json(run_dir / "failure.json", {"epoch": epoch, "error": str(error), "action": "stopped; batch size was not changed automatically"})
                 raise
             seconds = time.perf_counter() - started; gpu_peak = int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0
-            # 只允许第二阶段（Huber + NLL）更新 best.pt，避免第一阶段的协方差头未受约束。
+            # Update best.pt only in phase two (Huber + NLL), since the covariance head is unconstrained in phase one.
             current = float(validation_metrics["body_xy_rmse"]); is_best = phase == 2 and current < best_metric
             if is_best: best_metric, best_epoch = current, epoch
             checkpoint = _run_payload(model, optimizer, scheduler, epoch, best_metric, best_epoch, normalizer, cfg, manifest_hash, input_contract)
@@ -300,16 +300,16 @@ def _train(run_dir: Path, cfg: dict[str, Any], manifest_path: str | Path, data_r
 
 def evaluate_existing_run(run_dir: str | Path, data_root: str | Path, split: str, checkpoint_name: str,
                           output_dir: str | Path | None, project_root: str | Path) -> dict[str, Any]:
-    """从既有实验重新评估，不会改写训练日志或影响模型选择。"""
+    """Reevaluate an existing experiment without rewriting training logs or affecting model selection."""
     run_dir = Path(run_dir)
     if split not in {"val", "demo"}:
-        raise ValueError("split 只能为 val 或 demo")
+        raise ValueError("split must be val or demo")
     checkpoint_path = run_dir / f"{checkpoint_name}.pt"
     config_path = run_dir / "resolved_config.yaml"
     manifest_path = run_dir / "manifest_snapshot.yaml"
     metadata_path = run_dir / "run_metadata.json"
     if not checkpoint_path.is_file() or not config_path.is_file() or not manifest_path.is_file() or not metadata_path.is_file():
-        raise FileNotFoundError("运行目录缺少 checkpoint、resolved_config.yaml、manifest_snapshot.yaml 或 run_metadata.json")
+        raise FileNotFoundError("The run directory is missing a checkpoint, resolved_config.yaml, manifest_snapshot.yaml, or run_metadata.json")
     from .config import load_config
     cfg = load_config(config_path)
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -317,7 +317,7 @@ def evaluate_existing_run(run_dir: str | Path, data_root: str | Path, split: str
     device = choose_device(cfg["experiment"]["device"])
     model, payload = load_checkpoint(checkpoint_path, device)
     if payload["config_sha256"] != config_hash(cfg):
-        raise RuntimeError("checkpoint 与 resolved_config.yaml 不匹配，拒绝使用")
+        raise RuntimeError("checkpoint does not match resolved_config.yaml; refusing to use it")
     destination = Path(output_dir) if output_dir is not None else run_dir / "evaluation" / f"manual_{split}_{checkpoint_name}"
     result = evaluate_split(model, payload, cfg, manifest_path, data_root, split, destination, device)
     atomic_json(destination / "re_evaluation_context.json", {"checkpoint": checkpoint_path.name, "data_snapshot_sha256": metadata["data_snapshot_sha256"],
@@ -326,10 +326,10 @@ def evaluate_existing_run(run_dir: str | Path, data_root: str | Path, split: str
 
 
 def inspect_existing_run(run_dir: str | Path, checkpoint_name: str) -> dict[str, Any]:
-    """返回新手最常需要确认的 checkpoint 元信息，不加载或运行数据集。"""
+    """Return commonly needed checkpoint metadata without loading or running the dataset."""
     run_dir = Path(run_dir); checkpoint_path = run_dir / f"{checkpoint_name}.pt"
     if not checkpoint_path.is_file():
-        raise FileNotFoundError(f"找不到 checkpoint：{checkpoint_path}")
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
     payload = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     return {"checkpoint": str(checkpoint_path), "epoch": payload.get("epoch"), "best_epoch": payload.get("best_epoch"),
             "best_validation_body_xy_rmse": payload.get("best_metric"), "input_contract": payload.get("input_contract"),

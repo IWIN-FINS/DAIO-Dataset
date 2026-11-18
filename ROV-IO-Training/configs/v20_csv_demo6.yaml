@@ -1,4 +1,4 @@
-# 新 CSV 数据集的默认 V20 实验。demo 与 val 共享 6 条轨迹，非盲测。
+# Default V20 experiment for the new CSV dataset; demo and val share six trajectories, not a blind test.
 experiment:
   name: v20_dataset_remake
   seed: 42
@@ -10,8 +10,8 @@ data:
   source_format: processed_csv_200hz
   imu_hz: 200.0
   network_hz: 50.0
-  window_samples: 256          # 1.28 s 因果窗口；末端每 4 样本输出一次
-  label_savgol_window_s: 0.50  # 在 200 Hz 时间轴上自动换算为 101 点（必须为奇数）
+  window_samples: 256          # 1.28 s causal window; output every four samples at the window end
+  label_savgol_window_s: 0.50  # Converted to 101 points on the 200 Hz timeline (must be odd)
   label_savgol_polyorder: 3
   preprocessing:
     time: sample_time_s_only_no_firmware_timestamp

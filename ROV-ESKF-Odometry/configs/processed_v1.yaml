@@ -1,6 +1,6 @@
-# 最终公开数据集的目录布局（自包含副本，与 ROV-IO-Training/manifests/processed_v1.yaml 一致）。
-# 说明：本工程把 data.root 直接指向 ROV-RPM-IMU-Dataset-v1/processed，
-# 因此 processed_root 为 "."，glob 直接相对于该目录。
+# Final public dataset layout (self-contained copy matching ROV-IO-Training/manifests/processed_v1.yaml).
+# This project points data.root directly to ROV-RPM-IMU-Dataset-v1/processed,
+# so processed_root is "." and glob patterns are relative to that directory.
 schema_version: 1
 coordinate_frame: "FLU; +x forward, +y left, +z upward"
 offline_apriltag_only: true

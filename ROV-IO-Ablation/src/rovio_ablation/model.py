@@ -1,4 +1,4 @@
-"""五组实验共享模型组件；删模态实际删除分支，不以零输入冒充消融。"""
+"""Shared components for five experiments; removing a modality removes its branch, rather than substituting zeros."""
 from __future__ import annotations
 import torch
 from torch import nn
@@ -7,7 +7,7 @@ CHANNELS = {"rpm": 8, "throttle": 8, "accel_xy": 2, "accel_xyz": 3, "gyro_z": 1,
 PROJECT_NAMES = {"rpm": "rpm_project", "throttle": "throttle_project", "accel_xy": "accel_project", "accel_xyz": "accel_project", "gyro_z": "gyro_project", "gyro_xyz": "gyro_project", "depth": "depth_project"}
 
 class LocalCNN(nn.Module):
-    """保持 V24 卷积定义，256 点得到 64 token。整体窗口截止于预测时刻。"""
+    """Retain V24 convolutions: 256 samples produce 64 tokens; the full window ends at prediction time."""
     def __init__(self, input_channels):
         super().__init__()
         self.layers = nn.Sequential(
@@ -17,7 +17,7 @@ class LocalCNN(nn.Module):
         return self.layers(values).transpose(1, 2)
 
 class VelocityHead(nn.Module):
-    """各模型共用相同的速度均值和对角 log-std 输出头。"""
+    """Use the same velocity-mean and diagonal log-std output heads for all models."""
     def __init__(self, width, dropout):
         super().__init__()
         self.shared = nn.Sequential(nn.Linear(width, 64), nn.ReLU(), nn.Dropout(dropout))
@@ -31,14 +31,14 @@ class CNNEncoder(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.input_keys = tuple(cfg["modalities"])
-        # 保持完整 V24 的模块命名和初始化顺序，便于严格权重/前向回归。
+        # Retain full V24 module names and initialization order for exact weight/forward regression checks.
         for key in self.input_keys:
             setattr(self, key, LocalCNN(CHANNELS[key]))
         for key in self.input_keys:
             setattr(self, PROJECT_NAMES[key], nn.Linear(64, int(cfg["d_model"])))
     def encode(self, inputs):
         if len(inputs) != len(self.input_keys):
-            raise ValueError("输入模态数量与 checkpoint 契约不符")
+            raise ValueError("The number of input modalities does not match the checkpoint contract")
         tokens = [getattr(self, PROJECT_NAMES[k])(getattr(self, k)(x)) for k, x in zip(self.input_keys, inputs)]
         value = tokens[0]
         for token in tokens[1:]:
@@ -58,7 +58,7 @@ class CNNTransformer(CNNEncoder):
         tokens = self.encode(inputs)
         count = tokens.shape[1]
         if count > self.position.shape[1]:
-            raise ValueError("token 数超过位置编码长度")
+            raise ValueError("Token count exceeds the positional encoding length")
         tokens = tokens + self.position[:, :count]
         mask = torch.triu(torch.ones(count, count, dtype=torch.bool, device=tokens.device), 1)
         return self.head(self.transformer(tokens, mask=mask)[:, -1])
@@ -71,7 +71,7 @@ class FlatMLP(nn.Module):
             nn.Dropout(float(cfg["dropout"])), nn.Linear(64, 64), nn.ReLU())
         self.head = VelocityHead(64, float(cfg["dropout"]))
     def forward(self, *inputs):
-        # 固定通道顺序；展平保留时刻位置，但不显式共享时间局部权重。
+        # Fix channel order; flattening preserves temporal position without explicitly sharing local temporal weights.
         return self.head(self.encoder(torch.cat(inputs, dim=1).flatten(1)))
 
 class CNNGRU(CNNEncoder):
@@ -81,7 +81,7 @@ class CNNGRU(CNNEncoder):
         self.gru = nn.GRU(width, width, num_layers=3, dropout=float(cfg["dropout"]), batch_first=True)
         self.head = VelocityHead(width, float(cfg["dropout"]))
     def forward(self, *inputs):
-        # 不传入上一窗口隐藏状态：每次由 PyTorch 以零状态开始。
+        # Do not pass hidden state from the previous window; PyTorch starts each window with zero state.
         sequence, _ = self.gru(self.encode(inputs))
         return self.head(sequence[:, -1])
 

@@ -1,4 +1,4 @@
-"""11 状态滤波器的纯数值回归测试。"""
+"""Numerical regression tests for the 11-state filter."""
 from __future__ import annotations
 
 import numpy as np

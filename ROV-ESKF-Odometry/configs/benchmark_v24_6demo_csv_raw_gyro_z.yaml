@@ -1,5 +1,5 @@
-# V24 最佳模型：11 状态 ESKF 以原始 IMU gyro_z 传播 yaw 的对比回放。
-# 0--8 s 连续预热；8 s 仅一次 AprilTag yaw 重锚，之后 Tag 只用于离线评分。
+# Best V24 model: comparison replay with an 11-state ESKF propagating yaw from raw IMU gyro_z.
+# Warm up over 0--8 s; re-anchor AprilTag yaw once at 8 s, then use tags only for offline scoring.
 data:
   root: "../../dataset"
   manifest: "../../ROV-IO-Training/manifests/v20_csv_demo6.yaml"

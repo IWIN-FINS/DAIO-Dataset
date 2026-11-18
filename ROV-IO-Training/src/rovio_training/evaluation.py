@@ -1,6 +1,6 @@
-"""Checkpoint 评估、预测导出和机体系速度图。
+"""Checkpoint evaluation, prediction export, and body-frame velocity plots.
 
-AprilTag 在本模块中只作为离线标签和评分参考；数据集类不会把它提供给网络输入。
+AprilTag is used only for offline labels and scoring; the dataset never provides it as network input.
 """
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def _plot(record: str, payload: dict[str, np.ndarray], output: Path, dpi: int) -
 
 
 def _save_predictions(payload: dict[str, np.ndarray], output: Path) -> None:
-    """保存逐窗口预测，便于 MATLAB/Python 做二次误差分析而无需再次推理。"""
+    """Save per-window predictions for further MATLAB/Python error analysis without rerunning inference."""
     np.savez_compressed(output, **payload)
 
 

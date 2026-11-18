@@ -1,5 +1,5 @@
-# 显式冻结本次实验的文件划分。所有路径都相对于 data-root/processed。
-# demo 是 val 的展示别名，因此结果必须标注为“共享验证/展示，非盲测”。
+# Freeze the experiment file splits explicitly. All paths are relative to data-root/processed.
+# demo aliases val for presentation; label results as shared validation/demonstration, not blind tests.
 schema_version: 2
 coordinate_frame: "FLU; +x forward, +y left, +z upward"
 offline_apriltag_only: true

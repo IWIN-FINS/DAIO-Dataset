@@ -1,4 +1,4 @@
-# 部署/无外部观测回放：不读取也不要求 AprilTag。
+# Deployment/replay without external observations: AprilTag is neither read nor required.
 data:
   root: "../../ROV-RPM-IMU-Dataset-v1/processed"
   manifest: "processed_v1.yaml"

@@ -1,11 +1,11 @@
-"""绘制论文用的 DAIO 完整 demo 速度图。
+"""Plot DAIO velocity figures over complete demonstration scoring intervals for the paper.
 
-两列对应完整评分段内世界系 XY 速度 RMSE 最低的 demo 029、030；四行依次为
-世界系 vx、vy、Euler yaw-rate 与 XY 平面轨迹。
-每条记录均先从 0 s 连续完成网络历史积累和 ESKF 初始化。图中仅保留 8 s 后的
-完整评分段，并比较 AprilTag 离线 Ground Truth 与 DAIO（DAIO-Net + 11-state ESKF）。
+The columns show demonstrations 029 and 030, which have the lowest world-frame XY velocity RMSE
+over their complete scoring intervals. Rows show world-frame vx, vy, Euler yaw-rate, and XY trajectories.
+Each record starts at 0 s to accumulate network history and initialize the ESKF. Figures retain the
+complete scoring interval after 8 s and compare offline AprilTag Ground Truth with DAIO (DAIO-Net + 11-state ESKF).
 
-本脚本复用既有 ESKF 回放结果，不会重新训练网络或执行滤波：
+This script reuses existing ESKF replay results without retraining networks or rerunning the filter:
     python plot_demo_odometry_velocity_comparison.py
 """
 from __future__ import annotations
@@ -35,7 +35,7 @@ COLORS = {"ground_truth": "#222222", "daio": "#0F4D92"}
 
 
 def _record_curves(record: str, run_dir: Path, config: dict) -> dict:
-    """读取一条已完成 8 s 初始化的完整回放，并构造 Ground Truth 与 DAIO 曲线。"""
+    """Read a full replay initialized over 8 s and construct Ground Truth and DAIO curves."""
     directory = run_dir / record
     metadata = json.loads((directory / "window_metadata.json").read_text(encoding="utf-8"))
     sequence = load_sequence(metadata["source_hdf5"], require_reference=True)
@@ -46,7 +46,7 @@ def _record_curves(record: str, run_dir: Path, config: dict) -> dict:
         sequence, ts, int(config["evaluation"]["reference_savgol_window"]),
         int(config["evaluation"]["reference_savgol_polyorder"]),
     )
-    # ESKF 标称 yaw-rate = 严格因果的 IMU 解算 yaw 差分 + 滤波估计的慢变修正。
+    # ESKF nominal yaw-rate = strictly causal IMU-solved yaw difference + estimated slow correction.
     source = causal_yaw_rate_source(sequence, config["filter"]["yaw_rate_source"])
     imu_rate = np.asarray([source.rate_at(float(time)) for time in ts])
     daio_yaw_rate = imu_rate + state[:, 14]
@@ -56,7 +56,7 @@ def _record_curves(record: str, run_dir: Path, config: dict) -> dict:
         "ts": ts,
         "ground_truth": np.column_stack((reference_velocity[:, :2], ground_truth_yaw_rate)),
         "daio": np.column_stack((state[:, 3:5], daio_yaw_rate)),
-        # 两条轨迹都以评分起点为局部原点，便于直接叠加 XY 形状。
+        # Use the scoring start as the local origin for both trajectories to overlay their XY shapes.
         "ground_truth_xy": reference_xy - reference_xy[0],
         "daio_xy": state[:, :2] - state[0, :2],
         "startup_s": float(metadata["effective_start_s"]),
@@ -65,7 +65,7 @@ def _record_curves(record: str, run_dir: Path, config: dict) -> dict:
 
 
 def _row_limits(records: list[dict], row: int) -> tuple[float, float]:
-    """同一物理量在四个 demo 使用统一纵轴范围，方便横向比较。"""
+    """Use shared vertical limits for each quantity across the four demonstrations."""
     values = np.concatenate([np.r_[entry["ground_truth"][:, row], entry["daio"][:, row]] for entry in records])
     span = max(float(values.max() - values.min()), 0.02)
     margin = 0.10 * span
@@ -73,7 +73,7 @@ def _row_limits(records: list[dict], row: int) -> tuple[float, float]:
 
 
 def _plot(records: list[dict], pdf: Path, png: Path) -> None:
-    """输出双栏宽度 4x2 拼接图；完整保留评分段，不筛选局部窗口。"""
+    """Export a double-column 4x2 figure using complete scoring intervals without selecting local windows."""
     plt.rcParams.update({
         "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
         "font.size": 7.2, "axes.labelsize": 7.2, "axes.titlesize": 7.8,
@@ -101,7 +101,7 @@ def _plot(records: list[dict], pdf: Path, png: Path) -> None:
                 axis.set_ylabel(labels[row])
             if row == 2:
                 axis.set_xlabel("Time after initialization [s]")
-        # 最下一行显示同一完整评分段内的平面轨迹，而不是挑选局部片段。
+        # The bottom row shows the planar trajectory over the same complete scoring interval.
         xy_axis = axes[3, column]
         xy_axis.plot(entry["ground_truth_xy"][:, 0], entry["ground_truth_xy"][:, 1],
                      color=COLORS["ground_truth"], lw=0.9)
@@ -127,7 +127,7 @@ def main() -> None:
     records = [_record_curves(record, run_dir, config) for record in DEMOS]
     figure_dir = ROOT.parent / "RA-L Manuscript" / "ieeeconf" / "figures"
     _plot(records, figure_dir / "odometry_velocity_comparison.pdf", figure_dir / "odometry_velocity_comparison.png")
-    # 保存完整轨迹时长，作为论文图和数据归档之间的可追溯映射。
+    # Save full trajectory durations to link paper figures to archived data.
     audit_dir = run_dir / "paper_odometry_velocity_figure"
     audit_dir.mkdir(exist_ok=True)
     audit = [{"record": item["record"], "startup_s": item["startup_s"], "plotted_duration_s": item["duration_s"]}

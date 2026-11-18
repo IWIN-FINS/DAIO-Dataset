@@ -1,7 +1,7 @@
-"""11 状态姿态辅助 ESKF（FLU）。
+"""11-state attitude-aided ESKF (FLU).
 
-状态为 ``[p_w(3), v_w(3), b_a^b(3), yaw, yaw_rate_correction]``。
-roll/pitch 来自 IMU 内解姿态；yaw 以因果 IMU yaw-rate 加慢变校正项传播。
+State: ``[p_w(3), v_w(3), b_a^b(3), yaw, yaw_rate_correction]``.
+Roll/pitch come from the IMU attitude solution; yaw propagates using causal IMU yaw-rate plus a slow correction.
 """
 from __future__ import annotations
 
@@ -40,13 +40,13 @@ def _skew(vector: np.ndarray) -> np.ndarray:
 
 
 def rotation_matrix_from_tilt_yaw(roll: float, pitch: float, yaw: float) -> np.ndarray:
-    """机体系 FLU 到世界系的 ZYX 旋转。"""
+    """ZYX rotation from the FLU body frame to the world frame."""
     return _rz(float(yaw))
     # @ _ry(float(pitch)) @ _rx(float(roll))
 
 
 class AttitudeAidedESKF11:
-    """以外部 roll/pitch 和可校正 yaw-rate 驱动的 11 状态 ESKF。"""
+    """11-state ESKF driven by external roll/pitch and correctable yaw-rate."""
 
     def __init__(self, cfg: dict, nominal_imu_dt: float = 0.005) -> None:
         self.g = np.asarray(cfg["gravity_flu"], dtype=float).reshape(3)
@@ -68,7 +68,7 @@ class AttitudeAidedESKF11:
     def _psd(matrix: np.ndarray) -> np.ndarray:
         matrix = .5 * (np.asarray(matrix, dtype=float) + np.asarray(matrix, dtype=float).T)
         if not np.all(np.isfinite(matrix)) or np.min(np.linalg.eigvalsh(matrix)) < -1e-12:
-            raise ValueError("协方差必须有限且半正定")
+            raise ValueError("Covariance must be finite and positive semidefinite")
         return matrix
 
     @staticmethod
@@ -88,7 +88,7 @@ class AttitudeAidedESKF11:
                    yaw_rate_correction: float = 0.0) -> None:
         covariance = self._psd(np.asarray(covariance, dtype=float))
         if covariance.shape != (11, 11):
-            raise ValueError("初始协方差必须是 11x11")
+            raise ValueError("Initial covariance must be 11x11")
         self.p = np.asarray(position, dtype=float).reshape(3)
         self.v = np.zeros(3) if velocity is None else np.asarray(velocity, dtype=float).reshape(3)
         self.ba = np.asarray(accel_bias, dtype=float).reshape(3)
@@ -97,18 +97,18 @@ class AttitudeAidedESKF11:
         self.P = covariance
 
     def reanchor_yaw(self, yaw_absolute: float, yaw_std: float) -> None:
-        """离线 benchmark 的一次性世界系重定基；不作为部署运行时观测。"""
+        """One-time world-frame rebase for offline benchmarking, not a deployment observation."""
         if not np.isfinite(yaw_std) or yaw_std <= 0:
-            raise ValueError("yaw 重锚标准差必须为正")
+            raise ValueError("Yaw re-anchor standard deviation must be positive")
         delta = float(yaw_absolute) - self.yaw
         transform = np.eye(11)
         transform[:3, :3] = _rz(delta)
         transform[3:6, 3:6] = _rz(delta)
         self.v = _rz(delta) @ self.v
-        self.p[:2] = 0.0  # 局部世界系原点定义在重锚时刻的载体位置
+        self.p[:2] = 0.0  # Define the local world origin at the vehicle position when re-anchoring.
         self.yaw = float(yaw_absolute)
         self.P = transform @ self.P @ transform.T
-        # 原点与 benchmark 航向均由初始化协议定义；清除其旧相关性。
+        # The initialization protocol defines the origin and benchmark heading; clear their old correlations.
         self.P[:2, :] = 0.0
         self.P[:, :2] = 0.0
         self.P[0, 0] = self.P[1, 1] = 1e-6
@@ -119,10 +119,10 @@ class AttitudeAidedESKF11:
 
     def predict_interval(self, accel_start: np.ndarray, accel_end: np.ndarray, imu_yaw_rate: float,
                          roll_mid: float, pitch_mid: float, dt: float) -> None:
-        """中点积分：``yaw_dot = imu_yaw_rate + yaw_rate_correction``。"""
+        """Midpoint integration: ``yaw_dot = imu_yaw_rate + yaw_rate_correction``."""
         dt = float(dt)
         if not np.isfinite(dt) or dt <= 0:
-            raise ValueError("预测 dt 必须为正且有限")
+            raise ValueError("Prediction dt must be finite and positive")
         self.set_external_tilt(roll_mid, pitch_mid)
         f = .5 * (np.asarray(accel_start, dtype=float).reshape(3)
                   + np.asarray(accel_end, dtype=float).reshape(3)) - self.ba
@@ -167,7 +167,7 @@ class AttitudeAidedESKF11:
         residual, H = np.asarray(residual, dtype=float).reshape(-1), np.asarray(H, dtype=float)
         covariance = self._psd(np.asarray(covariance, dtype=float))
         if H.shape != (len(residual), 11) or covariance.shape != (len(residual), len(residual)):
-            raise ValueError("观测维度与 11 状态不一致")
+            raise ValueError("Observation dimensions do not match the 11-state model")
         S = self._psd(H @ self.P @ H.T + covariance)
         nis = float(residual @ np.linalg.solve(S, residual))
         if not np.isfinite(nis) or nis > float(gate):
@@ -195,7 +195,7 @@ class AttitudeAidedESKF11:
         return self.update(np.asarray(velocity_xy, dtype=float).reshape(2) - predicted, H, covariance, gate)
 
     def update_yaw_rate(self, yaw_rate: float, imu_yaw_rate: float, variance: float, gate: float) -> Update:
-        """网络 Euler yaw-rate 与因果 IMU yaw-rate 的差异观测。"""
+        """Observe the difference between network Euler yaw-rate and causal IMU yaw-rate."""
         H = np.zeros((1, 11)); H[0, 10] = 1.0
         predicted = float(imu_yaw_rate) + self.yaw_rate_correction
         return self.update(np.array([float(yaw_rate) - predicted]), H, np.array([[float(variance)]]), gate)
@@ -205,10 +205,10 @@ class AttitudeAidedESKF11:
 
 
 class DirectYawEKF9:
-    """外部 IMU yaw 直供的 9 状态误差状态 KF。
+    """9-state error-state KF using external IMU yaw directly.
 
-    状态仅为 ``[p_w(3), v_w(3), b_a^b(3)]``。yaw 不是状态、不积分，也不接受
-    网络 yaw-rate 更新；它仅作为已知外部量用于比力旋转和 body-XY 速度观测模型。
+    State: ``[p_w(3), v_w(3), b_a^b(3)]``. Yaw is not a state, is not integrated, and receives no
+    network yaw-rate updates; it is a known input for specific-force rotation and body-XY velocity observations.
     """
 
     def __init__(self, cfg: dict, nominal_imu_dt: float = 0.005) -> None:
@@ -222,13 +222,13 @@ class DirectYawEKF9:
                    *, velocity: np.ndarray | None = None) -> None:
         covariance = AttitudeAidedESKF11._psd(np.asarray(covariance, dtype=float))
         if covariance.shape != (9, 9):
-            raise ValueError("DirectYawEKF9 初始协方差必须是 9x9")
+            raise ValueError("DirectYawEKF9 initial covariance must be 9x9")
         self.p = np.asarray(position, dtype=float).reshape(3)
         self.v = np.zeros(3) if velocity is None else np.asarray(velocity, dtype=float).reshape(3)
         self.ba = np.asarray(accel_bias, dtype=float).reshape(3); self.P = covariance
 
     def reanchor(self, delta_yaw: float) -> None:
-        """把当前 p/v 和协方差旋转到 8 s 建立的 benchmark 世界系。"""
+        """Rotate current p/v and covariance into the benchmark world frame established at 8 s."""
         rotation = _rz(float(delta_yaw)); transform = np.eye(9)
         transform[:3, :3] = rotation; transform[3:6, 3:6] = rotation
         self.p = rotation @ self.p; self.v = rotation @ self.v; self.p[:2] = 0.0
@@ -239,7 +239,7 @@ class DirectYawEKF9:
     def predict_interval(self, accel_start: np.ndarray, accel_end: np.ndarray, yaw_mid: float, dt: float) -> None:
         dt = float(dt)
         if not np.isfinite(dt) or dt <= 0:
-            raise ValueError("预测 dt 必须为正且有限")
+            raise ValueError("Prediction dt must be finite and positive")
         f = .5 * (np.asarray(accel_start, dtype=float).reshape(3) + np.asarray(accel_end, dtype=float).reshape(3)) - self.ba
         R = _rz(float(yaw_mid)); a_world = R @ f + self.g
         self.p = self.p + self.v * dt + .5 * a_world * dt * dt
@@ -257,7 +257,7 @@ class DirectYawEKF9:
         residual, H = np.asarray(residual, dtype=float).reshape(-1), np.asarray(H, dtype=float)
         covariance = AttitudeAidedESKF11._psd(np.asarray(covariance, dtype=float))
         if H.shape != (len(residual), 9) or covariance.shape != (len(residual), len(residual)):
-            raise ValueError("观测维度与 9 状态不一致")
+            raise ValueError("Observation dimensions do not match the 9-state model")
         S = AttitudeAidedESKF11._psd(H @ self.P @ H.T + covariance)
         nis = float(residual @ np.linalg.solve(S, residual))
         if not np.isfinite(nis) or nis > float(gate): return Update(False, nis, residual.copy())

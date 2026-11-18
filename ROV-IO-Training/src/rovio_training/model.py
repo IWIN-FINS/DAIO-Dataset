@@ -1,4 +1,4 @@
-"""V20 兼容的四分支 CNN--Transformer 速度观测网络。"""
+"""V20-compatible four-branch CNN--Transformer velocity observation network."""
 from __future__ import annotations
 
 import torch
@@ -6,7 +6,7 @@ from torch import nn
 
 
 class LocalCNN(nn.Module):
-    """V11/V20 的两层局部时间编码器：256 个采样点下采样为 64 个 token。"""
+    """V11/V20 two-layer local temporal encoder: downsample 256 samples to 64 tokens."""
     def __init__(self, input_channels: int) -> None:
         super().__init__()
         self.layers = nn.Sequential(
@@ -32,12 +32,12 @@ class VelocityHead(nn.Module):
 
 
 class V20FourBranchTransformer(nn.Module):
-    """输入为 RPM、水平加速度、偏航角速度和物理平均深度。
+    """Inputs are RPM, horizontal acceleration, yaw angular velocity, and physical mean depth.
 
-    输入顺序被固定为 ``rpm [B,8,256]``、``accel_xy [B,2,256]``、
-    ``gyro_z [B,1,256]``、``depth [B,1,256]``，并与数据契约一一对应。
-    四个 CNN 分别抽取局部时间特征，投影后逐元素相加；因果 Transformer 的最后
-    一个 token 预测窗口末端的机体系 ``[vx, vy, r]`` 以及对角 log-std。
+    The fixed input order is ``rpm [B,8,256]``, ``accel_xy [B,2,256]``,
+    ``gyro_z [B,1,256]``, ``depth [B,1,256]``, matching the data contract.
+    Four CNNs extract local temporal features that are summed elementwise after projection. The final
+    causal Transformer token predicts body-frame ``[vx, vy, r]`` and diagonal log-std at the window end.
     """
     input_keys = ("rpm", "accel_xy", "gyro_z", "depth")
 
@@ -54,13 +54,13 @@ class V20FourBranchTransformer(nn.Module):
 
     def forward(self, rpm: torch.Tensor, accel_xy: torch.Tensor, gyro_z: torch.Tensor,
                 depth: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        # 四支特征必须保持同一 64-token 时间分辨率，才能逐元素相加融合。
+        # All four branches must retain the same 64-token temporal resolution for elementwise fusion.
         tokens = (self.rpm_project(self.rpm(rpm)) + self.accel_project(self.accel_xy(accel_xy)) +
                   self.gyro_project(self.gyro_z(gyro_z)) + self.depth_project(self.depth(depth)))
         count = tokens.shape[1]
         if count > self.position.shape[1]: raise ValueError(f"{count} tokens exceed configured max_tokens")
         tokens = tokens + self.position[:, :count]
-        # 上三角 mask 禁止第 i 个 token 读取未来 j>i 的数据，保证部署时严格因果。
+        # The upper-triangular mask prevents token i from reading future tokens j>i, preserving deployment causality.
         mask = torch.triu(torch.ones(count, count, dtype=torch.bool, device=tokens.device), diagonal=1)
         latent = self.transformer(tokens, mask=mask)[:, -1]
         return self.head(latent)

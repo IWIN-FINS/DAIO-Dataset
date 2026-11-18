@@ -1,4 +1,4 @@
-"""离线 benchmark、指标与绘图；运行时 replay 模块不读取 AprilTag。"""
+"""Offline benchmarks, metrics, and plots; the runtime replay module does not read AprilTag."""
 from __future__ import annotations
 
 import hashlib
@@ -19,7 +19,7 @@ from .windows import network_observations
 
 @dataclass(frozen=True)
 class RecordWindow:
-    """一条记录的离线 benchmark 窗口；所有秒数相对首个 IMU 样本。"""
+    """Offline benchmark window for one record; all times are relative to the first IMU sample."""
 
     path: Path
     requested_start_s: float
@@ -38,11 +38,11 @@ def _interpolate(ts: np.ndarray, values: np.ndarray, query: np.ndarray) -> np.nd
 
 
 def offline_reference(sequence: Sequence, query_ts: np.ndarray, window: int, polyorder: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """AprilTag 离线参考：平滑 XY/yaw 及其世界系 XY 速度。"""
+    """Offline AprilTag reference: smoothed XY/yaw and world-frame XY velocity."""
     tag_ts, tag_xy, tag_yaw, _ = require_apriltag(sequence)
     width = min(int(window), len(tag_ts) if len(tag_ts) % 2 else len(tag_ts) - 1)
     if width < 5 or width <= polyorder:
-        raise ValueError("AprilTag 样本不足以构造离线参考")
+        raise ValueError("Insufficient AprilTag samples for an offline reference")
     xy = savgol_filter(tag_xy, width, polyorder, axis=0, mode="interp")
     yaw = savgol_filter(np.unwrap(tag_yaw), width, polyorder, mode="interp")
     velocity = np.gradient(xy, tag_ts, axis=0, edge_order=1)
@@ -99,7 +99,7 @@ def _save(fig: Any, path: Path, dpi: int) -> None:
 
 
 def _pyplot() -> Any:
-    """返回无 GUI 的 Matplotlib 接口，保证命令行与 Jetson 回放可保存图片。"""
+    """Return a headless Matplotlib interface for saving figures from CLI and Jetson replay."""
     import matplotlib
     matplotlib.use("Agg", force=True)
     import matplotlib.pyplot as plt
@@ -108,7 +108,7 @@ def _pyplot() -> Any:
 
 def network_world_velocity(state_raw: np.ndarray, network_ts: np.ndarray, network_body_xy: np.ndarray,
                            query_ts: np.ndarray) -> np.ndarray:
-    """将网络机体系 XY 速度按 ESKF 姿态旋转并对齐到世界系时间轴。"""
+    """Rotate network body-XY velocity using ESKF attitude and align it with the world-frame timeline."""
     rotations = Rotation.from_quat(np.asarray(state_raw)[:, 6:10]).as_matrix()
     body = np.column_stack((np.interp(query_ts, network_ts, network_body_xy[:, 0]),
                             np.interp(query_ts, network_ts, network_body_xy[:, 1]),
@@ -117,7 +117,7 @@ def network_world_velocity(state_raw: np.ndarray, network_ts: np.ndarray, networ
 
 
 def network_body_velocity_reference(sequence: Sequence, network_ts: np.ndarray, config: dict) -> tuple[np.ndarray, np.ndarray]:
-    """仅用于离线图表：在网络时间戳构造 AprilTag 派生的机体系 XY 真值。"""
+    """Offline plots only: construct AprilTag-derived body-XY ground truth at network timestamps."""
     _, yaw, velocity_world = offline_reference(sequence, network_ts,
                                                 int(config["evaluation"]["reference_savgol_window"]),
                                                 int(config["evaluation"]["reference_savgol_polyorder"]))
@@ -129,7 +129,7 @@ def network_body_velocity_reference(sequence: Sequence, network_ts: np.ndarray, 
 
 def save_network_body_velocity(sequence: Sequence, network, config: dict, start_time: float, end_time: float,
                                directory: Path, dpi: int) -> dict[str, float]:
-    """保存网络 body-XY 预测、AprilTag 离线真值、标准差及其对比图。"""
+    """Save network body-XY predictions, offline AprilTag ground truth, standard deviations, and comparison plots."""
     mask = (network.ts >= start_time - 1e-9) & (network.ts <= end_time + 1e-9)
     ts, prediction, std = network.ts[mask], network.mean[mask, :2], network.std[mask, :2]
     reference, _ = network_body_velocity_reference(sequence, ts, config)
@@ -153,23 +153,23 @@ def save_network_body_velocity(sequence: Sequence, network, config: dict, start_
 
 
 def _imu_yaw_aligned(sequence: Sequence, query_ts: np.ndarray, reference_yaw: np.ndarray, *, yaw_absolute: bool) -> np.ndarray:
-    """在 IMU 时间轴上因果保持机载 yaw，并对齐到当前绘图的世界航向基准。
+    """Causally hold onboard yaw on the IMU timeline and align it with the plotted world heading.
 
-    benchmark 模式中，ESKF 在评分起点由 AprilTag yaw 重锚，因此 IMU 原始 yaw
-    只做一个常量偏移后与该世界系比较；deployment 模式则将评分起点设为零。
-    这只服务于离线可视化，绝不作为额外滤波观测。
+    In benchmark mode, the ESKF re-anchors to AprilTag yaw at the scoring start. Raw IMU yaw
+    is compared after a constant offset; deployment mode instead sets the scoring-start heading to zero.
+    This is for offline visualization only and never provides an additional filter observation.
     """
     query = np.asarray(query_ts, dtype=float)
     indices = np.searchsorted(sequence.attitude_ts, query, side="right") - 1
     if np.any(indices < 0):
-        raise ValueError("评分时间早于第一个 IMU 姿态包，无法绘制 IMU yaw")
+        raise ValueError("Scoring starts before the first IMU attitude packet; cannot plot IMU yaw")
     yaw = np.unwrap(np.asarray(sequence.attitude_rpy[indices, 2], dtype=float))
     offset = float(reference_yaw[0] - yaw[0]) if yaw_absolute else float(-yaw[0])
     return yaw + offset
 
 
 def _wrapped_yaw_for_plot(yaw: np.ndarray) -> np.ndarray:
-    """将 yaw 限定在 [0, 2π)，并在跨越边界处断线而非画出伪竖直线。"""
+    """Wrap yaw to [0, 2π) and break curves at boundary crossings to avoid artificial vertical lines."""
     wrapped = np.mod(np.asarray(yaw, dtype=float), 2.0 * np.pi)
     if len(wrapped) > 1:
         wrapped[1:][np.abs(np.diff(wrapped)) > np.pi] = np.nan
@@ -231,7 +231,7 @@ def _sha256(path: Path) -> str:
 
 
 def _window(record: str | Path | RecordWindow, sequence: Sequence, config: dict) -> RecordWindow:
-    """将用户秒数映射为已校验的、相对记录起点的窗口定义。"""
+    """Map user-specified seconds to a validated window relative to the record start."""
     if isinstance(record, RecordWindow):
         requested = record
     else:
@@ -241,28 +241,28 @@ def _window(record: str | Path | RecordWindow, sequence: Sequence, config: dict)
     end = duration if requested.requested_end_s is None else float(requested.requested_end_s)
     startup = float(config["initialization"]["startup_s"])
     if start < startup:
-        raise ValueError(f"{requested.path}: start_s={start:g} 早于 {startup:g} s 初始化窗结束")
+        raise ValueError(f"{requested.path}: start_s={start:g} precedes the end of the {startup:g} s initialization window")
     if not np.isfinite(end) or end <= start:
-        raise ValueError(f"{requested.path}: end_s 必须大于 start_s")
+        raise ValueError(f"{requested.path}: end_s must be greater than start_s")
     if end > duration + 1e-9:
-        raise ValueError(f"{requested.path}: end_s={end:g} 超出记录时长 {duration:g} s")
+        raise ValueError(f"{requested.path}: end_s={end:g} exceeds the record duration of {duration:g} s")
     return RecordWindow(requested.path, start, None if requested.requested_end_s is None else end)
 
 
 def _effective_window(sequence: Sequence, window: RecordWindow) -> tuple[int, int, float, float]:
-    """把请求窗口向内对齐到实际 200 Hz IMU 时刻，避免半个积分区间。"""
+    """Align requested bounds inward to actual 200 Hz IMU timestamps to avoid partial integration intervals."""
     origin = float(sequence.imu_ts[0])
     requested_end = float(sequence.imu_ts[-1] - origin) if window.requested_end_s is None else window.requested_end_s
     start_index = int(np.searchsorted(sequence.imu_ts, origin + window.requested_start_s, side="left"))
     end_index = int(np.searchsorted(sequence.imu_ts, origin + requested_end, side="right") - 1)
     if start_index >= len(sequence.imu_ts) or end_index <= start_index:
-        raise ValueError(f"{window.path}: 有效 IMU 窗口为空")
+        raise ValueError(f"{window.path}: the valid IMU window is empty")
     return start_index, end_index, float(sequence.imu_ts[start_index]), float(sequence.imu_ts[end_index])
 
 
 def _window_metadata(sequence: Sequence, window: RecordWindow, full: Replay11Output, start_index: int,
                      end_index: int, start_time: float, end_time: float, config: dict) -> dict[str, Any]:
-    """保存可复查的裁剪、初始化和开始时后验，不把这些信息散落在日志中。"""
+    """Save reviewable cropping, initialization, and start-time posterior details together."""
     origin = float(sequence.imu_ts[0])
     return {
         "source_hdf5": str(sequence.path),
@@ -274,7 +274,7 @@ def _window_metadata(sequence: Sequence, window: RecordWindow, full: Replay11Out
         "scoring_duration_s": float(end_time - start_time),
         "initialization_window_s": [0.0, float(config["initialization"]["startup_s"])],
         "reanchor_time_s": None if full.reanchor_time is None else float(full.reanchor_time - origin),
-        "state_full_coordinate_note": "start_s 前为 provisional world；start_s yaw 重锚后为 benchmark local world。",
+        "state_full_coordinate_note": "Before start_s: provisional world; after yaw re-anchoring at start_s: benchmark local world.",
         "accel_bias_initial_mps2": full.state[0, 10:13].tolist(),
         "accel_bias_at_start_mps2": full.state[start_index, 10:13].tolist(),
         "yaw_rate_correction_at_start_radps": float(full.state[start_index, 14]),
@@ -319,7 +319,7 @@ def evaluate_record(record: str | Path | RecordWindow, config: dict, model: torc
             metrics.update(save_network_body_velocity(sequence, network, config, scored.ts[0], scored.ts[-1], directory,
                                                       int(config["evaluation"]["plot_dpi"])))
         if bool(config["debug"]["save_plots"]):
-            # raw_gyro_z 实验中刻意不读取/绘制 IMU 解算 yaw，避免它被误认为滤波输入。
+            # Do not read or plot IMU-solved yaw in the raw_gyro_z experiment, to avoid implying it is a filter input.
             source_type = str(config["filter"].get("yaw_rate_source", {}).get("type", "solved_yaw_backward_difference"))
             imu_yaw = None if source_type == "raw_gyro_z" else _imu_yaw_aligned(
                 sequence, scored.ts, ref_yaw, yaw_absolute=(mode == "benchmark_apriltag_init"))
@@ -360,13 +360,13 @@ def evaluate_split(split: str, config: dict, out_dir: str | Path, device: str | 
 
 
 def _write_markdown_summary(summary: dict[str, Any], directory: Path) -> None:
-    """写出便于人工审阅的逐轨迹汇总；不把共享 demo 误标为盲测。"""
+    """Write a reviewable per-trajectory summary without labeling shared demonstrations as blind tests."""
     rows = summary["records"]
     direct_yaw = summary["experiment"] == "direct_imu_yaw_ekf9"
-    observation_text = "50 Hz 平均深度与网络 XY 速度；yaw 直接取 IMU 解算值，不估计且不融合网络 yaw-rate。" if direct_yaw else "50 Hz 平均深度、网络 XY 速度和网络 yaw-rate。"
-    lines = ["# V24 ESKF 回放汇总", "",
-             "此结果使用共享验证/展示 demo，不是独立盲测。0--8 s 为连续预热；8 s 使用一次 AprilTag yaw 重锚，"
-             f"之后 AprilTag 仅用于离线评分。运行时融合为 {observation_text}", "",
+    observation_text = "50 Hz mean depth and network XY velocity; yaw comes directly from the IMU solution, with no yaw estimation or network yaw-rate fusion." if direct_yaw else "50 Hz mean depth, network XY velocity, and network yaw-rate."
+    lines = ["# V24 ESKF Replay Summary", "",
+             "These results use shared validation/demonstration records, not independent blind tests. Warm up over 0--8 s and re-anchor AprilTag yaw once at 8 s; "
+             f"afterward, AprilTag is used only for offline scoring. Runtime fusion uses {observation_text}", "",
              "| Record | XY position RMSE [m] | World XY velocity RMSE [m/s] | Yaw RMSE [rad] | Final position [m] | XY accept |", 
              "|---|---:|---:|---:|---:|---:|"]
     for row in rows:

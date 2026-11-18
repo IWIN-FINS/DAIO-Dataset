@@ -1,4 +1,4 @@
-"""运行时数据不依赖 AprilTag 的契约测试。"""
+"""Contract tests ensuring runtime data does not depend on AprilTag."""
 from __future__ import annotations
 
 import json
@@ -60,9 +60,9 @@ def test_window_is_aligned_to_imu_and_enforces_initialization(tmp_path) -> None:
     window = _window(RecordWindow(path, .03, .07), seq, cfg)
     start, end, actual_start, actual_end = _effective_window(seq, window)
     assert (start, end, actual_start, actual_end) == (6, 14, .03, .07)
-    with pytest.raises(ValueError, match="初始化窗"):
+    with pytest.raises(ValueError, match="initialization window"):
         _window(RecordWindow(path, .01, .07), seq, cfg)
-    with pytest.raises(ValueError, match="超出记录时长"):
+    with pytest.raises(ValueError, match="exceeds the record duration"):
         _window(RecordWindow(path, .03, .30), seq, cfg)
 
 
@@ -104,7 +104,7 @@ def test_processed_csv_v24_contract_and_six_sample_windows(tmp_path) -> None:
     sequence = load_sequence(path, require_reference=True)
     assert sequence.source_format == "processed_csv_200hz"
     assert len(sequence.depth_ts) == 400 and np.isclose(sequence.attitude_rpy[-1, 2], .1 * 1599 / 200.)
-    # CSV 深度只在每个 20 ms 区间末端更新，且物理深度不再二次压力换算。
+    # CSV depth updates only at the end of each 20 ms interval; physical depth is not reconverted from pressure.
     assert np.isclose(height_measurement(sequence, 0), -(1.25 + .01 * 3 / 200.))
     source = causal_yaw_rate_source(sequence, {"backward_window_s": .05, "median_filter_samples": 1,
                                                 "max_abs_rate_radps": 1.0})
@@ -119,7 +119,7 @@ def test_processed_csv_v24_contract_and_six_sample_windows(tmp_path) -> None:
     builder = V20WindowBuilder(sequence, checkpoint)
     rpm, _, _, depth = builder.feature_arrays()
     assert builder.raw_window_samples == 1536 and builder.downsample_factor == 6 and builder.stride == 4
-    # 最后一个 V24 token 严格取当前输出时刻及其前五个原始样本，未读取未来。
+    # The final V24 token uses the current output sample and the five preceding raw samples, never future samples.
     expected = np.mean(sequence.rpm[1530:1536, 0]) / 1000.
     assert np.isclose(rpm[0, 0, -1], expected)
     assert np.isclose(builder.window_times()[0], 1535 / 200.)

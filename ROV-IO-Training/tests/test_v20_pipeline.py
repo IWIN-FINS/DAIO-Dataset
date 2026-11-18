@@ -93,7 +93,7 @@ def test_two_epoch_cpu_smoke_saves_best_and_demo_once(tmp_path: Path) -> None:
 
 
 def _write_processed_csv(path: Path, phase: float, count: int = 360) -> None:
-    """最小的新 CSV 契约 fixture：pressure 已经是物理深度，不可再次换算。"""
+    """Minimal new-CSV fixture: pressure is already physical depth and must not be converted again."""
     hz = 200.0
     ts = np.arange(count) / hz
     names = ["sample_time_s", "pressure", "acc_x", "acc_y", "acc_z", "gyro_z"]
@@ -145,19 +145,19 @@ def test_processed_csv_uses_direct_depth_and_excludes_rpm_windows(tmp_path: Path
     root, manifest, config_path = _csv_fixture(tmp_path); config = load_config(config_path)
     paths = resolve_manifest(manifest, root)
     dataset = V20WindowDataset(paths["train"], config); normalizer = dataset.fit_normalizer()
-    # RPM 只能除以 1000；pressure=2.5 m 不得被再次按 Pa 换算。
+    # RPM is divided only by 1000; pressure=2.5 m must not be interpreted as Pa and reconverted.
     item = dataset[0]
     np.testing.assert_allclose(item["rpm"].numpy(), dataset.windows[0]["rpm"][0] / 1000.0)
     assert 2.45 < float(dataset.windows[0]["depth"][0, 0, 0]) < 2.55
     assert np.all(normalizer["rpm_std"] == 1000.0)
-    # 不含异常区间时原本有 27 个 50 Hz 窗口；1.40--1.60 s 会排除 10 个端点。
+    # Without anomaly intervals there are 27 windows at 50 Hz; 1.40--1.60 s excludes 10 endpoints.
     assert len(dataset) == 17
     assert paths["val"] == paths["demo"] and set(paths["train"]).isdisjoint(paths["val"])
 
 
 def test_v21_uses_512_past_raw_samples_and_expands_rpm_exclusion(tmp_path: Path) -> None:
     root, manifest, config_path = _csv_fixture(tmp_path, count=720)
-    # 为此 fixture 提供真实的源行定位：第 598 个 processed 样本是唯一 RPM 饱和值。
+    # Provide exact source-row metadata: processed sample 598 is the only saturated RPM sample.
     processed_manifest = root / "processed" / "manifest.csv"
     with processed_manifest.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=("processed_relative_path", "source_row_start",
@@ -177,7 +177,7 @@ def test_v21_uses_512_past_raw_samples_and_expands_rpm_exclusion(tmp_path: Path)
     dataset = V20WindowDataset(resolve_manifest(manifest, root)["train"], config)
     normalizer = dataset.fit_normalizer()
     assert dataset.raw_window_samples == 512 and dataset.downsample_factor == 2 and dataset.stride == 4
-    # 第一个输出时刻为第 511 个原始样本；最后一对严格是 [510,511]，没有未来样本。
+    # The first output is raw sample 511; its final pair is exactly [510,511], with no future samples.
     first = dataset[0]
     expected = (dataset.windows[0]["rpm"][0, :, 510] + dataset.windows[0]["rpm"][0, :, 511]) / 2.0 / 1000.0
     np.testing.assert_allclose(first["rpm"].numpy()[:, -1], expected)
@@ -185,7 +185,7 @@ def test_v21_uses_512_past_raw_samples_and_expands_rpm_exclusion(tmp_path: Path)
     assert first["rpm"].shape == (8, 256) and first["accel_xy"].shape == (2, 256)
     model = build_model(config)
     assert model.rpm(first["rpm"].unsqueeze(0)).shape == (1, 64, 64)
-    # 饱和值在 2.99 s；其后的约 2.555 s 窗口末端全部必须被屏蔽。
+    # Saturation occurs at 2.99 s; all window endpoints over approximately the next 2.555 s must be masked.
     output_times = np.asarray([entry[2] for entry in dataset.entries])
     assert not np.any((output_times >= 598 / 200.0) & (output_times <= (598 + 511) / 200.0))
     assert np.all(normalizer["rpm_std"] == 1000.0)

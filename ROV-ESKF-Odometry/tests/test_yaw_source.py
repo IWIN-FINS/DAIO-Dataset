@@ -1,4 +1,4 @@
-"""姿态包因果性与网络协方差语义测试。"""
+"""Tests for attitude-packet causality and network covariance semantics."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,7 +22,7 @@ def test_causal_rate_does_not_read_future_attitude_packet() -> None:
     cfg = {"backward_window_s": .01, "median_filter_samples": 1, "max_abs_rate_radps": 100.}
     source_a = causal_yaw_rate_source(_sequence(np.array([0., .1, .2, .3])), cfg)
     source_b = causal_yaw_rate_source(_sequence(np.array([0., .1, .2, 99.])), cfg)
-    # t=0.025 时只能知道 t=0.02 包，不应受 t=0.03 的未来改动影响。
+    # At t=0.025 only the t=0.02 packet is known; future changes at t=0.03 must have no effect.
     assert np.isclose(source_a.rate_at(.025), source_b.rate_at(.025))
     assert np.isclose(source_a.rate_at(.025), 10.)
     assert np.isclose(source_a.age_at(.025), .005)
@@ -36,7 +36,7 @@ def test_fixed_window_rate_rejects_irregular_short_timestamp_spike() -> None:
                         sequence.pressure_zero_pa, sequence.pressure_to_depth_m_per_pa)
     source = causal_yaw_rate_source(sequence, {"backward_window_s": .05, "median_filter_samples": 3,
                                                 "max_abs_rate_radps": 1.})
-    # 相邻包法会在 0.0101 s 产生 100 rad/s；固定窗法只在 0.06 s 后产生有限值。
+    # Adjacent-packet differencing yields 100 rad/s at 0.0101 s; fixed-window differencing yields finite values only after 0.06 s.
     assert source.rate_at(.02) == 0.0
     assert abs(source.rate_at(.061)) <= 1.0
 

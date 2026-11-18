@@ -1,19 +1,19 @@
 """V20/V24 CNN-Transformer, including checkpoint-declared modality ablations.
 
-模型输入契约（训练数据契约固定）：
-- ``rpm [B,8,256]``：八路电机转速（/1000）
-- ``accel_xy [B,2,256]``：机体系水平加速度（train z-score）
-- ``gyro_z [B,1,256]``：偏航角速度（train z-score）
-- ``depth [B,1,256]``：物理平均深度（train z-score）
+Model input contract (fixed by the training data contract):
+- ``rpm [B,8,256]``: eight motor speeds (/1000)
+- ``accel_xy [B,2,256]``: horizontal body-frame acceleration (training z-score)
+- ``gyro_z [B,1,256]``: yaw angular velocity (training z-score)
+- ``depth [B,1,256]``: physical mean depth (training z-score)
 V24 ablations select only config.model.modalities, in its declared order;
 omitted branches are not constructed or passed zero-valued substitutes.
 
-输出：窗口末端的机体系 ``[vx_b, vy_b, r]`` 的 ``(mean[B,3], log_std[B,3])``，
-标准差为 ``exp(log_std)``。三个输出轴依次为 FLU 机体系纵向速度、横向速度、
-偏航角速度。
+Output: ``(mean[B,3], log_std[B,3])`` for body-frame ``[vx_b, vy_b, r]`` at the window end.
+Standard deviation is ``exp(log_std)``. The three output axes are FLU body-frame longitudinal velocity,
+lateral velocity, and yaw-rate, respectively.
 
-本模块是网络定义与 checkpoint 加载的唯一入口；ESKF / replay 只调用
-``windows.network_observations`` 得到推理结果，不直接触碰模型细节。
+This module is the sole entry point for model definition and checkpoint loading. ESKF/replay use
+``windows.network_observations`` for inference without accessing model internals.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from torch import nn
 
 
 class LocalCNN(nn.Module):
-    """V20 的两层局部时间编码器：256 个采样点下采样为 64 个 token。"""
+    """V20 two-layer local temporal encoder: downsample 256 samples to 64 tokens."""
 
     def __init__(self, input_channels: int) -> None:
         super().__init__()
@@ -37,12 +37,12 @@ class LocalCNN(nn.Module):
         )
 
     def forward(self, values: torch.Tensor) -> torch.Tensor:
-        # [B, C, 256] -> [B, 64, 64] -> 转置为 [B, 64 token, 64]
+        # [B, C, 256] -> [B, 64, 64] -> transpose to [B, 64 tokens, 64]
         return self.layers(values).transpose(1, 2)
 
 
 class VelocityHead(nn.Module):
-    """共享 MLP -> mean / log_std 双头；log_std 被裁剪以保持数值安全。"""
+    """Shared MLP with mean/log_std heads; clip log_std for numerical stability."""
 
     def __init__(self, width: int, dropout: float) -> None:
         super().__init__()
@@ -52,16 +52,16 @@ class VelocityHead(nn.Module):
 
     def forward(self, latent: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         value = self.shared(latent)
-        # 上下界让 exp(log_std) 数值安全且保留较宽范围。
+        # Bounds keep exp(log_std) numerically safe while retaining a wide range.
         return self.mean(value), torch.clamp(self.log_std(value), min=-6.0, max=3.0)
 
 
 class V20FourBranchTransformer(nn.Module):
-    """四支 CNN-Transformer 网络（RPM / accel_xy / gyro_z / depth）。
+    """Four-branch CNN-Transformer (RPM / accel_xy / gyro_z / depth).
 
-    四支特征保持同一 64-token 时间分辨率，投影后逐元素相加；因果 Transformer
-    的上三角 mask 禁止第 i 个 token 读取未来 j>i 的数据，最后一个 token 送进
-    输出头。训练与部署使用同一实现，保证因果一致性。
+    All four branches retain the same 64-token temporal resolution and are summed elementwise after projection.
+    The causal Transformer uses an upper-triangular mask to prevent token i from reading future tokens j>i.
+    The last token feeds the output head. Training and deployment share this implementation for consistent causality.
     """
     input_keys = ("rpm", "accel_xy", "gyro_z", "depth")
 
@@ -88,7 +88,7 @@ class V20FourBranchTransformer(nn.Module):
                   + self.gyro_project(self.gyro_z(gyro_z)) + self.depth_project(self.depth(depth)))
         count = tokens.shape[1]
         if count > self.position.shape[1]:
-            raise ValueError(f"{count} 个 token 超过配置的 max_tokens")
+            raise ValueError(f"{count} tokens exceed the configured max_tokens")
         tokens = tokens + self.position[:, :count]
         mask = torch.triu(torch.ones(count, count, dtype=torch.bool, device=tokens.device), diagonal=1)
         latent = self.transformer(tokens, mask=mask)[:, -1]
@@ -153,15 +153,15 @@ def build_model(model_cfg: dict[str, Any]) -> nn.Module:
 
 
 def load_checkpoint(path: str | Path, device: str | torch.device = "cpu") -> tuple[nn.Module, dict[str, Any]]:
-    """加载训练仓库的 best.pt 并返回 ``(eval 模式的模型, checkpoint dict)``。
+    """Load best.pt from the training repository and return ``(model in eval mode, checkpoint dict)``.
 
-    checkpoint dict 关键字段：``format_version``、``model``（state_dict）、
-    ``normalizer``（{rpm_*, accel_xy_*, gyro_z_*, depth_*}）、``config``。
+    Key checkpoint fields: ``format_version``, ``model`` (state_dict),
+    ``normalizer``({rpm_*, accel_xy_*, gyro_z_*, depth_*}), ``config``.
     """
     device = torch.device(device)
     payload = torch.load(Path(path), map_location=device, weights_only=False)
     if payload.get("format_version") != 1:
-        raise ValueError("不支持的 checkpoint 格式（format_version != 1）")
+        raise ValueError("Unsupported checkpoint format (format_version != 1)")
     model = build_model(payload["config"]).to(device)
     model.load_state_dict(payload["model"], strict=True)
     model.eval()
@@ -169,5 +169,5 @@ def load_checkpoint(path: str | Path, device: str | torch.device = "cpu") -> tup
 
 
 def parameter_count(model: nn.Module) -> int:
-    """返回可训练参数量，便于打印模型规模。"""
+    """Return the number of trainable parameters for model-size reporting."""
     return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)

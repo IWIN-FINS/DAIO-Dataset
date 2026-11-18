@@ -1,15 +1,15 @@
-# V20 兼容的默认实验。建议复制本文件创建新实验，而不是覆盖原始基线。
+# V20-compatible default experiment. Copy this file for new experiments instead of overwriting the baseline.
 experiment:
   name: v20_batch64_dropout0.5_phase1Epochs40
   seed: 42
   device: auto                 # auto | cuda | cpu
-  deterministic: false         # true：更易复现，但 CUDA 吞吐可能下降
-  tf32: false                  # 只在单独记录的吞吐实验中开启
+  deterministic: false         # true improves reproducibility but may reduce CUDA throughput
+  tf32: false                  # Enable only in separately documented throughput experiments
 
 data:
   imu_hz: 200.0
   network_hz: 50.0
-  window_samples: 256          # 200 Hz 下的 1.28 s 因果历史；V20 不应修改
+  window_samples: 256          # 1.28 s causal history at 200 Hz; keep fixed for V20
   label_savgol_window: 15
   label_savgol_polyorder: 3
   pressure:
@@ -35,14 +35,14 @@ training:
   epochs: 80
   phase1_epochs: 40
   batch_size: 128
-  num_workers: 0               # Windows 稳定默认值；确认无 HDF5 问题后才可尝试增大
+  num_workers: 0               # Stable Windows default; increase only after checking HDF5 compatibility
   pin_memory: true
   lr: 0.001
   weight_decay: 0.0001
   grad_clip_norm: 5.0
   huber_delta: 0.1
   nll_weight: 0.05
-  log_every_batches: 0         # 0：只打印每轮完整验证结果；>0：额外打印每 N 个 batch
+  log_every_batches: 0         # 0: full validation per epoch only; >0: also report every N batches
 
 evaluation:
   selection_metric: body_xy_rmse

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rov-eskf-odometry"
 version = "0.1.0"
-description = "11 维 attitude-aided ESKF 水下惯性里程计（IMU + 深度 + V20 学习网络 [vx,vy,r]）"
+description = "11-state attitude-aided ESKF for underwater inertial odometry (IMU + depth + V20 learned [vx,vy,r])"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

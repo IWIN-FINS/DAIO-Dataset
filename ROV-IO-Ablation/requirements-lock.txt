@@ -1,4 +1,4 @@
-# 已验证的 Windows Python 3.10 / CUDA 12.8 环境
+# Validated Windows Python 3.10 / CUDA 12.8 environment
 --extra-index-url https://download.pytorch.org/whl/cu128
 numpy==2.2.6
 scipy==1.15.3

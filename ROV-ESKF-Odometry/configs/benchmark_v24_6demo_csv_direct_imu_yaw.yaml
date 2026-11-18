@@ -1,5 +1,5 @@
-# 与 benchmark_v24_6demo_csv.yaml 保持同一数据、V24 checkpoint 和 8 s 协议；
-# 唯一方法差异是 yaw 直接使用 IMU 解算值，而非滤波状态或网络 yaw-rate。
+# Use the same data, V24 checkpoint, and 8 s protocol as benchmark_v24_6demo_csv.yaml.
+# The only method difference is using IMU-solved yaw directly instead of filter-state yaw or network yaw-rate.
 data:
   root: "../../dataset"
   manifest: "../../ROV-IO-Training/manifests/v20_csv_demo6.yaml"

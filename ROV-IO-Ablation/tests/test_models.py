@@ -1,4 +1,4 @@
-"""消融契约测试：先固定输入、分支删除和重载行为。"""
+"""Ablation contract tests for fixed inputs, branch removal, and reload behavior."""
 from pathlib import Path
 import pytest
 import torch

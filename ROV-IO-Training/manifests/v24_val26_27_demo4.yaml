@@ -1,4 +1,4 @@
-# 新实验划分：026/027 用于选模，其余四条仅用于训练结束后的展示评估。
+# New experiment split: 026/027 for model selection; the other four are held out for post-training demonstration evaluation.
 schema_version: 3
 data_format: processed_csv_200hz
 coordinate_frame: "FLU; +x forward, +y left, +z upward"

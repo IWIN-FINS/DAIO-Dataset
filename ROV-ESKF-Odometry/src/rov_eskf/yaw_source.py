@@ -1,4 +1,4 @@
-"""严格因果、抗时间戳抖动的 IMU 内解航向角速度源。"""
+"""Strictly causal IMU-solved yaw-rate source robust to timestamp jitter."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,13 +10,13 @@ from .data import Sequence
 
 @dataclass(frozen=True)
 class CausalYawRateSource:
-    """由固定后向时间窗差分形成的 Euler yaw-rate 流。
+    """Euler yaw-rate stream computed from fixed backward time windows.
 
-    姿态包的时间戳存在短间隔抖动。若直接对相邻两包求差分，一个仅数十
-    微秒的间隔会把很小的 yaw 量化误差放大为非物理角速度。这里第 j 包到达
-    后，只与 ``backward_window_s`` 之前最近的已到达包求差分，再对过去若干
-    个候选作因果中值滤波并限幅。结果从第 j 包时刻起零阶保持，因此从不读取
-    未来姿态包。
+    Attitude timestamps can contain very short intervals. Differencing adjacent packets can amplify
+    small yaw quantization errors into unphysical angular rates when an interval is only tens of microseconds.
+    When packet j arrives, difference it against the latest available packet at or before
+    ``backward_window_s`` earlier, then apply a causal median filter and clipping to recent candidates.
+    Hold the result from packet j onward, without ever reading future attitude packets.
     """
 
     change_ts: np.ndarray
@@ -33,27 +33,27 @@ class CausalYawRateSource:
 
 
 def causal_yaw_rate_source(seq: Sequence, config: dict | None = None) -> CausalYawRateSource:
-    """构建绝不使用未来姿态包的稳健 yaw-rate 源。
+    """Build a robust yaw-rate source without using future attitude packets.
 
-    ``config`` 来自 ``filter.yaw_rate_source``。保留默认值使该函数也能在
-    独立单元测试中使用；正式回放必须由 YAML 显式冻结这些参数。
+    ``config`` comes from ``filter.yaw_rate_source``. Defaults support standalone unit tests;
+    production replay must explicitly freeze these parameters in YAML.
     """
     cfg = config or {}
     window_s = float(cfg.get("backward_window_s", 0.05))
     median_samples = int(cfg.get("median_filter_samples", 5))
     max_abs_rate = float(cfg.get("max_abs_rate_radps", 1.0))
     if not np.isfinite(window_s) or window_s <= 0:
-        raise ValueError("yaw-rate 后向差分窗口必须为有限正数")
+        raise ValueError("The yaw-rate backward-difference window must be finite and positive")
     if median_samples < 1 or median_samples % 2 != 1:
-        raise ValueError("yaw-rate 因果中值滤波长度必须是正奇数")
+        raise ValueError("The causal yaw-rate median filter length must be a positive odd integer")
     if not np.isfinite(max_abs_rate) or max_abs_rate <= 0:
-        raise ValueError("yaw-rate 物理限幅必须为有限正数")
+        raise ValueError("The yaw-rate physical limit must be finite and positive")
     ts = np.asarray(seq.attitude_ts, dtype=float)
     yaw = np.unwrap(np.asarray(seq.attitude_rpy[:, 2], dtype=float))
     if len(ts) < 2:
-        raise ValueError(f"{seq.path}: 至少需要两包 IMU 解算姿态才能微分 yaw")
-    # 对第 j 包，从不晚于 t_j-window 的最近历史包差分。这样分母始终接近
-    # 固定窗口，而不是受异常密集的姿态包影响。
+        raise ValueError(f"{seq.path}: at least two IMU attitude packets are required to differentiate yaw")
+    # For packet j, difference against the latest historical packet at or before t_j-window.
+    # This keeps the denominator near the fixed window rather than an abnormally short packet interval.
     previous = np.searchsorted(ts, ts - window_s, side="right") - 1
     valid = previous >= 0
     current = np.flatnonzero(valid)
@@ -71,26 +71,26 @@ def causal_yaw_rate_source(seq: Sequence, config: dict | None = None) -> CausalY
 
 
 def raw_gyro_z_source(seq: Sequence) -> CausalYawRateSource:
-    """将原始 IMU ``gyro_z`` 直接作为严格因果的 yaw-rate 传播源。
+    """Use raw IMU ``gyro_z`` directly as a strictly causal yaw-rate propagation source.
 
-    该路径刻意**不读取** ``attitude_rpy`` 或记录中的 IMU 解算 yaw：每个
-    陀螺仪样本到达后，其 z 轴角速度从该时间戳起零阶保持至下一 IMU 样本。
-    网络 yaw-rate 观测仍由 11 状态滤波器估计的 ``yaw_rate_correction``
-    校正该原始传播率。
+    This path deliberately does not read ``attitude_rpy`` or IMU-solved yaw. When each gyro sample
+    arrives, hold its z-axis angular velocity from that timestamp until the next IMU sample.
+    Network yaw-rate observations still correct the raw propagation rate through
+    ``yaw_rate_correction`` estimated by the 11-state filter.
     """
     ts = np.asarray(seq.imu_ts, dtype=float)
     gyro_z = np.asarray(seq.gyro[:, 2], dtype=float)
     if len(ts) != len(gyro_z) or len(ts) == 0:
-        raise ValueError(f"{seq.path}: 原始 gyro_z 时间轴或长度无效")
+        raise ValueError(f"{seq.path}: invalid raw gyro_z timeline or length")
     if not np.all(np.isfinite(gyro_z)):
-        raise ValueError(f"{seq.path}: 原始 gyro_z 包含非有限值")
+        raise ValueError(f"{seq.path}: raw gyro_z contains nonfinite values")
     return CausalYawRateSource(change_ts=ts.copy(), rates=gyro_z.copy(), source_packet_ts=ts.copy())
 
 
 def causal_tilt(seq: Sequence, query_ts: np.ndarray) -> np.ndarray:
-    """最近过去姿态包的 roll/pitch 零阶保持，不插值也不使用未来数据。"""
+    """Hold roll/pitch from the latest past attitude packet without interpolation or future data."""
     query = np.asarray(query_ts, dtype=float)
     indices = np.searchsorted(seq.attitude_ts, query, side="right") - 1
     if np.any(indices < 0):
-        raise ValueError(f"{seq.path}: 查询时刻之前没有可用 IMU 姿态包")
+        raise ValueError(f"{seq.path}: no IMU attitude packet is available at or before the query time")
     return np.asarray(seq.attitude_rpy[indices, :2], dtype=float)

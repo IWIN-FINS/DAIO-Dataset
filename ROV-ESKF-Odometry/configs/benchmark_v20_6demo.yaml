@@ -1,13 +1,13 @@
-# 六条 data3/data4 共享验证/展示轨迹的离线 ESKF 回放。
-# 注意：该组记录被用于模型选择，且当前 checkpoint 的部分记录进入过训练集；
-# 本配置只用于诊断与展示，不能作为独立盲测结果。
-# 10 s 时使用一次 AprilTag yaw 重锚，仅限离线 benchmark。
+# Offline ESKF replay of the six shared validation/demonstration trajectories from data3/data4.
+# These records were used for model selection, and some were included in training this checkpoint.
+# Use this configuration for diagnostics and demonstrations only, not as an independent blind test.
+# Re-anchor once with AprilTag yaw at 10 s; offline benchmark only.
 data:
   root: "../../ROV-RPM-IMU-Dataset-v1/processed"
   manifest: "processed_v1.yaml"
   split: "val"
   records:
-    # 每条记录可独立裁剪；时间相对其首个 IMU 时间戳，null 表示运行到末尾。
+    # Each record supports cropping relative to its first IMU timestamp; null runs to the end.
     - {path: train/data3/ellipse_large.h5, start_s: 10.0, end_s: null}
     - {path: train/data3/figure_eight.h5, start_s: 10.0, end_s: null}
     - {path: train/data3/slalom_s_curve.h5, start_s: 10.0, end_s: null}
@@ -47,8 +47,8 @@ filter:
     - [0.0, 0.0, 5.826577e-4]
   yaw_rate_source_psd_rad2_per_s: 8.3e-7
   yaw_rate_correction_rw_psd_rad2_per_s3: 3.34e-6
-  # 姿态包时间戳偶有异常短间隔；固定 50 ms 后向差分避免量化噪声被放大。
-  # 1.0 rad/s 高于当前数据的真实偏航范围，作为只拦截异常尖峰的物理保护。
+  # Attitude packets occasionally have abnormally short intervals; fixed 50 ms backward differences limit quantization noise amplification.
+  # A 1.0 rad/s physical guard exceeds the true yaw-rate range in this dataset and rejects only anomalous spikes.
   yaw_rate_source:
     backward_window_s: 0.05
     median_filter_samples: 5

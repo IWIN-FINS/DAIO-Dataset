@@ -1,4 +1,4 @@
-"""源码快照用于回溯与恢复校验；绝不把数据或已有训练产物复制进快照。"""
+"""Source snapshots support provenance and resumption checks; never include data or existing training artifacts."""
 import hashlib
 import shutil
 from pathlib import Path
@@ -29,4 +29,4 @@ def assert_source(root, run):
     import json
     saved = json.loads((Path(run) / "source_inventory.json").read_text(encoding="utf-8"))
     if source_inventory(root)["sha256"] != saved["sha256"]:
-        raise RuntimeError("源码已变化，拒绝恢复。请还原 source_snapshot，或启动新实验。")
+        raise RuntimeError("Source code has changed; refusing to resume. Restore source_snapshot or start a new experiment.")

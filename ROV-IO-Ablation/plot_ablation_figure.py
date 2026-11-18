@@ -1,10 +1,10 @@
-"""生成 DAIO-Net 与四组消融模型的论文级速度误差对比图。
+"""Generate publication-quality velocity-error comparisons for DAIO-Net and four ablations.
 
-本脚本只读取已经导出的 ``*_predictions.npz``，绝不重新运行网络。每个
-NPZ 必须包含 prediction、target、time 和 sequence；五个实验的标签和时间轴
-必须完全一致，否则脚本会立即报错，以避免把不同样本集的指标并列比较。
+This script reads exported ``*_predictions.npz`` files without rerunning networks. Each NPZ
+must contain prediction, target, time, and sequence. Labels and timelines must match exactly
+across all five experiments; otherwise fail immediately to avoid comparing different sample sets.
 
-运行：
+Usage:
     python plot_ablation_figure.py
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# 服务器/Windows 环境中用户目录有时不可写；将 Matplotlib 缓存放入临时目录。
+# User directories may be unwritable on servers/Windows; place the Matplotlib cache in a temporary directory.
 os.environ.setdefault("MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "rovio_ablation_figure_mpl"))
 import matplotlib
 
@@ -35,7 +35,7 @@ DEMOS = ("025_demo__segment_001", "028_demo__segment_001", "029_demo__segment_00
 TEST_NAMES = {demo: f"test{index}" for index, demo in enumerate(DEMOS, start=1)}
 TEST_TITLES = {demo: f"Test {index}" for index, demo in enumerate(DEMOS, start=1)}
 
-# 颜色在表格下方的共享图例中解释；DAIO-Net 使用深蓝突出完整方案。
+# The shared legend below the table explains colors; dark blue highlights the full DAIO-Net model.
 PALETTE = {
     "DAIO-Net": "#0F4D92",
     "Without RPM": "#B64342",
@@ -44,13 +44,13 @@ PALETTE = {
     "CNN--GRU": "#8BCF8B",
 }
 
-# 下方折线、箱线图和顶部表格均完整呈现五种模型。
+# Curves, boxplots, and the top table all include all five models.
 LINE_MODELS = ("DAIO-Net", "Without RPM", "Without Depth", "Flat MLP", "CNN--GRU")
 
 
 @dataclass(frozen=True)
 class ModelSource:
-    """一个模型名称及其已完成 demo 预测所在目录。"""
+    """A model name and the directory containing its completed demonstration predictions."""
 
     name: str
     directory: Path
@@ -71,7 +71,7 @@ MODELS = (
 
 
 def load_prediction(path: Path) -> dict[str, np.ndarray]:
-    """读取并验证单条已导出预测；本图只使用 body-frame XY 两个速度分量。"""
+    """Load and validate one exported prediction; use only body-frame XY velocity components."""
     if not path.is_file():
         raise FileNotFoundError(f"Missing prediction file: {path}")
     with np.load(path) as archive:
@@ -93,7 +93,7 @@ def load_prediction(path: Path) -> dict[str, np.ndarray]:
 
 
 def validate_common_reference(records: dict[str, dict[str, dict[str, np.ndarray]]]) -> None:
-    """确保五种模型在每条 demo 上面对的是逐样本相同的离线参考标签。"""
+    """Ensure all five models use identical per-sample offline reference labels for each demonstration."""
     for demo in DEMOS:
         reference = records[MODELS[0].name][demo]
         for source in MODELS[1:]:
@@ -107,18 +107,18 @@ def validate_common_reference(records: dict[str, dict[str, dict[str, np.ndarray]
 
 
 def instantaneous_error(payload: dict[str, np.ndarray]) -> np.ndarray:
-    """返回每个 50 Hz 输出时刻的二维 body-frame 速度误差范数 [m/s]。"""
+    """Return the 2D body-frame velocity error norm [m/s] at each 50 Hz output timestamp."""
     return np.linalg.norm(payload["prediction"][:, :2] - payload["target"][:, :2], axis=1)
 
 
 def mean_downsample(time: np.ndarray, values: np.ndarray, factor: int = 10) -> tuple[np.ndarray, np.ndarray]:
-    """仅为可读性对绘图折线做非重叠块均值；指标和箱线图仍使用全部 50 Hz 样本。"""
+    """Apply nonoverlapping block means for curve readability only; metrics and boxplots use all 50 Hz samples."""
     if factor <= 0:
         raise ValueError("downsample factor must be positive")
     complete = (len(values) // factor) * factor
     sampled_time = time[:complete].reshape(-1, factor).mean(axis=1)
     sampled_values = values[:complete].reshape(-1, factor).mean(axis=1)
-    # 保留最后不足 factor 的少量样本，避免曲线在轨迹结束前无故截断。
+    # Retain a final partial block to avoid truncating the curve before the trajectory ends.
     if complete < len(values):
         sampled_time = np.append(sampled_time, np.mean(time[complete:]))
         sampled_values = np.append(sampled_values, np.mean(values[complete:]))
@@ -126,7 +126,7 @@ def mean_downsample(time: np.ndarray, values: np.ndarray, factor: int = 10) -> t
 
 
 def rve_5s(payload: dict[str, np.ndarray]) -> float:
-    """计算同一连续段内 5 s 相对速度增量的二维 RMSE。"""
+    """Compute 2D RMSE of 5 s relative velocity increments within the same continuous segment."""
     time = payload["time"]
     sequence = payload["sequence"]
     median_dt = float(np.median(np.diff(time)))
@@ -143,7 +143,7 @@ def rve_5s(payload: dict[str, np.ndarray]) -> float:
 
 
 def ave(payload: dict[str, np.ndarray]) -> float:
-    """二维速度向量 RMSE，即 AVE [m/s]。"""
+    """2D velocity-vector RMSE, i.e. AVE [m/s]."""
     error = payload["prediction"][:, :2] - payload["target"][:, :2]
     return float(np.sqrt(np.mean(np.sum(error * error, axis=1))))
 
@@ -161,7 +161,7 @@ def compute_metrics(records: dict[str, dict[str, dict[str, np.ndarray]]]) -> lis
 
 
 def configure_style() -> None:
-    """统一论文图字体、嵌入式 PDF 字体及简洁坐标轴风格。"""
+    """Set consistent publication fonts, embedded PDF fonts, and clean axes."""
     plt.rcParams.update({
         "font.family": "sans-serif",
         "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
@@ -179,7 +179,7 @@ def configure_style() -> None:
 
 
 def plot_metric_table(metrics: list[dict[str, Any]]) -> plt.Figure:
-    """生成独立的 AVE/RVE 跨双栏表格图。"""
+    """Generate a standalone AVE/RVE table figure spanning both columns."""
     configure_style()
     figure = plt.figure(figsize=(7.16, 1.24), constrained_layout=False)
     table_axis = figure.add_axes((0.03, 0.06, 0.94, 0.88))
@@ -234,7 +234,7 @@ def plot_error_panels(records: dict[str, dict[str, dict[str, np.ndarray]]]) -> p
         for source in MODELS:
             payload = records[source.name][demo]
             errors = instantaneous_error(payload)
-            # 50 个 50 Hz 样本约为 1 s：总览图优先展示模型误差趋势。
+            # Fifty samples at 50 Hz span about 1 s; the overview emphasizes model-error trends.
             if source.name in LINE_MODELS:
                 error_series.append(errors)
                 plot_time, plot_errors = mean_downsample(payload["time"], errors, factor=50)
@@ -266,7 +266,7 @@ def plot_error_panels(records: dict[str, dict[str, dict[str, np.ndarray]]]) -> p
         for patch, source in zip(box["boxes"], plotted_sources):
             patch.set(facecolor=PALETTE[source.name], edgecolor="#303030", linewidth=0.55, alpha=0.82)
         box_axis.set_xticks(range(1, len(plotted_sources) + 1))
-        # 横向长条中箱线图宽度有限，类别由底部共享颜色图例唯一标识，避免 F/R/D/M/G 重叠。
+        # Narrow horizontal boxplots use the shared color legend to identify categories without overlapping F/R/D/M/G labels.
         box_axis.set_xticklabels([])
         box_axis.tick_params(axis="y", left=False, labelleft=False)
         box_axis.spines[["top", "right"]].set_visible(False)
@@ -279,7 +279,7 @@ def plot_error_panels(records: dict[str, dict[str, dict[str, np.ndarray]]]) -> p
 
 
 def write_reports(metrics: list[dict[str, Any]]) -> None:
-    """保存可用于论文表格复核的机器可读和人工可读指标。"""
+    """Save machine-readable and human-readable metrics for checking paper tables."""
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     published = []
     for row in metrics:
@@ -299,7 +299,7 @@ def write_reports(metrics: list[dict[str, Any]]) -> None:
                "tests": [{"name": TEST_NAMES[demo], "source_prediction_stem": demo} for demo in DEMOS],
                "models": published}
     (REPORT_DIR / "ablation_velocity_metrics.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    lines = ["# 五模型消融速度误差", "", "单位：m/s；AVE 为二维机体系速度向量 RMSE，RVE 为 5 s 相对速度增量 RMSE。", "",
+    lines = ["# Five-Model Velocity Ablation", "", "Units: m/s. AVE is 2D body-frame velocity-vector RMSE; RVE is 5 s relative velocity-increment RMSE.", "",
              "| Model | " + " | ".join(f"{TEST_TITLES[demo]} AVE | {TEST_TITLES[demo]} RVE" for demo in DEMOS) + " |",
              "|---|" + "---:|" * (2 * len(DEMOS))]
     for row in published:

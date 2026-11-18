@@ -119,7 +119,7 @@ def v20_input_contract(cfg: dict[str, Any]) -> dict[str, Any]:
                        "downsample_factor": downsample},
             "target": "offline_raw_apriltag_body_flu_vx_vy_r", "online_apriltag_input": False}
 
-    # 输入契约只声明真实进入模型的模态；被删除模态不拟合统计。
+    # The input contract declares only modalities actually used by the model; do not fit statistics for removed modalities.
     active = cfg["model"]["modalities"]
     contract.update(throttle={"channels": 8, "transform": "signed command identity; mean=0 std=1"},
                     accel_xyz={"source": "raw acc_x,acc_y,acc_z", "transform": "global_train_split_zscore_no_debias"},

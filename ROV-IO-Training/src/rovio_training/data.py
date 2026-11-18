@@ -1,8 +1,8 @@
-"""V20--V23 的统一数据契约、特征构造和划分解析。
+"""Unified V20--V23 data contracts, feature construction, and split parsing.
 
-默认路径是 ``dataset/processed`` 下的 200 Hz CSV segment。旧 HDF5 路径仍然
-可以读取，以便历史 checkpoint 排查；但它不再是默认训练来源。AprilTag 仅在
-``offline_labels`` 中用于离线标签，任何网络特征函数都不接收 AprilTag 数据。
+The default source is 200 Hz CSV segments under ``dataset/processed``. Legacy HDF5 remains
+readable for diagnosing historical checkpoints but is no longer the default training source. AprilTag is used
+only for offline labels in ``offline_labels``; network feature functions never receive AprilTag data.
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ CSV_REQUIRED_COLUMNS = (
 
 @dataclass(frozen=True)
 class Sequence:
-    """单个连续数据段的统一内存表示。"""
+    """Unified in-memory representation of one continuous data segment."""
 
     path: Path
     source_format: str
@@ -43,15 +43,15 @@ class Sequence:
     tag_ts: np.ndarray
     tag_xy: np.ndarray
     tag_yaw: np.ndarray
-    # CSV 的 depth_m 已是物理深度。旧 HDF5 则保留原压力信息，供历史兼容用。
+    # CSV depth_m is already physical depth; legacy HDF5 retains original pressure data for compatibility.
     depth_m: np.ndarray | None = None
     depth_ts: np.ndarray | None = None
     depth4_raw: np.ndarray | None = None
     pressure_zero_pa: np.ndarray | None = None
     pressure_to_depth_m_per_pa: float | None = None
     network_window_exclusion_end_intervals_s: np.ndarray | None = None
-    # 从 processed/manifest.csv 的原始 RPM 饱和值行换算而来；各实验据此按实际
-    # 输入窗动态扩展禁用区间，不能复用旧 1.28 s 的预计算区间。
+    # Derived from raw RPM saturation rows in processed/manifest.csv; each experiment expands exclusion
+    # intervals dynamically using its actual input window, not legacy precomputed 1.28 s intervals.
     rpm_saturation_times_s: np.ndarray | None = None
 
 
@@ -62,7 +62,7 @@ def _validate_time(name: str, ts: np.ndarray, values: np.ndarray) -> None:
 
 
 def _find_processed_root(path: Path) -> Path:
-    """由 ``processed/v1/foo.csv`` 定位到 ``processed`` 根目录。"""
+    """Locate the processed root from a path such as ``processed/v1/foo.csv``."""
     for candidate in (path.parent, *path.parents):
         if candidate.name == "processed" and (candidate / "manifest.csv").is_file():
             return candidate
@@ -78,7 +78,7 @@ class _ProcessedCsvMetadata:
 
 @lru_cache(maxsize=8)
 def _load_processed_manifest(manifest_path: str) -> dict[str, _ProcessedCsvMetadata]:
-    """读取处理工具写出的 RPM 异常元数据，并缓存避免重复扫描。"""
+    """Read RPM anomaly metadata from preprocessing and cache it to avoid repeated scans."""
     output: dict[str, _ProcessedCsvMetadata] = {}
     with Path(manifest_path).open("r", encoding="utf-8", newline="") as handle:
         for row in csv.DictReader(handle):
@@ -114,7 +114,7 @@ def _load_processed_manifest(manifest_path: str) -> dict[str, _ProcessedCsvMetad
 
 
 def _csv_rpm_metadata(path: Path, sample_time_s: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """返回旧版区间和精确异常时刻；异常时刻优先用于窗口长度相关的屏蔽。"""
+    """Return legacy intervals and precise anomaly times; prefer times for window-length-dependent masking."""
     processed = _find_processed_root(path)
     relative = path.resolve().relative_to(processed.resolve()).as_posix()
     metadata = _load_processed_manifest(str((processed / "manifest.csv").resolve()))
@@ -131,10 +131,10 @@ def _csv_rpm_metadata(path: Path, sample_time_s: np.ndarray) -> tuple[np.ndarray
 
 
 def _load_csv_sequence(path: Path) -> Sequence:
-    """读取新 ``processed_csv_200hz`` 契约。
+    """Read the new ``processed_csv_200hz`` contract.
 
-    ``sample_time_s`` 是唯一训练时间轴。pressure 已是四压力平均表压转换后的
-    深度[m]，因此这里绝不再减大气压、除以 rho*g 或插值。
+    ``sample_time_s`` is the sole training timeline. pressure is already depth [m] converted from
+    the mean gauge pressure of four sensors; do not subtract atmospheric pressure, divide by rho*g, or interpolate again.
     """
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -158,7 +158,7 @@ def _load_csv_sequence(path: Path) -> Sequence:
 
     imu_ts = column("sample_time_s")
     accel = np.column_stack((column("acc_x"), column("acc_y"), column("acc_z")))
-    # 新数据只有 gyro_z；V20 只使用这一维，补零仅用于统一 [N,3] 的内部接口。
+    # New data provides only gyro_z; V20 uses this component, with zeros only to unify the internal [N,3] interface.
     gyro = np.column_stack((np.zeros_like(imu_ts), np.zeros_like(imu_ts), column("gyro_z")))
     rpm = np.column_stack(tuple(column(f"int_rpm_{index}") for index in range(1, 9)))
     tag_xy = np.column_stack((column("tag_x_m"), column("tag_y_m")))
@@ -186,7 +186,7 @@ def _load_csv_sequence(path: Path) -> Sequence:
 
 
 def _load_hdf5_sequence(path: Path) -> Sequence:
-    """兼容旧 processed HDF5，仅供历史 checkpoint 排查，非默认训练路径。"""
+    """Read legacy processed HDF5 for historical checkpoint diagnostics, not as the default training source."""
     with h5py.File(path, "r") as handle:
         required = (
             "imu/ts", "imu/accel", "imu/gyro", "rpm/ts", "rpm/rpm", "depth/ts",
@@ -222,7 +222,7 @@ def _load_hdf5_sequence(path: Path) -> Sequence:
 
 
 def load_sequence(path: str | Path) -> Sequence:
-    """按文件后缀选择新 CSV 或历史 HDF5 读取器。"""
+    """Select the new CSV or legacy HDF5 reader by file extension."""
     path = Path(path)
     if path.suffix.lower() == ".csv":
         return _load_csv_sequence(path)
@@ -267,7 +267,7 @@ def _validate_sequence(seq: Sequence) -> None:
 
 
 def manifest_has_shared_validation_demo(manifest_path: str | Path) -> bool:
-    """返回 demo 是否被明确声明为 validation 的共享展示集。"""
+    """Return whether demo is explicitly declared as a shared demonstration alias of validation."""
     manifest = read_yaml(manifest_path)
     demo = manifest.get("splits", {}).get("demo")
     return isinstance(demo, dict) and demo.get("alias_of") == "val"
@@ -284,7 +284,7 @@ def _allowed_suffixes(manifest: dict[str, Any]) -> set[str]:
 
 def _resolve_manifest_entry(entry: dict[str, Any], processed: Path, split: str,
                             allowed_suffixes: set[str]) -> list[Path]:
-    """解析非别名划分，支持 ``glob`` + ``exclude_files`` 或显式 ``files``。"""
+    """Resolve nonalias splits using ``glob`` + ``exclude_files`` or explicit ``files``."""
     has_glob, has_files = "glob" in entry, "files" in entry
     if has_glob == has_files:
         raise ValueError(f"{split}: exactly one of glob or files is required")
@@ -325,7 +325,7 @@ def _resolve_manifest_entry(entry: dict[str, Any], processed: Path, split: str,
 
 
 def resolve_manifest(manifest_path: str | Path, data_root: str | Path) -> dict[str, list[Path]]:
-    """解析数据划分，并禁止 train 与验证/展示集重叠。"""
+    """Resolve data splits and reject overlap between training and validation/demonstration records."""
     manifest = read_yaml(manifest_path)
     root = Path(data_root)
     if manifest.get("offline_apriltag_only") is not True:
@@ -364,7 +364,7 @@ def resolve_manifest(manifest_path: str | Path, data_root: str | Path) -> dict[s
 
 def physical_mean_depth(seq: Sequence, query_ts: np.ndarray, atmosphere_pa: float,
                         water_density_kg_m3: float, gravity_mps2: float) -> np.ndarray:
-    """返回与 ``query_ts`` 对齐的深度：CSV 直用，HDF5 按历史规则恢复。"""
+    """Return depth aligned with ``query_ts``: direct CSV values or legacy HDF5 reconstruction."""
     query_ts = np.asarray(query_ts, dtype=np.float64)
     if seq.depth_m is not None:
         return np.interp(query_ts, seq.imu_ts, seq.depth_m)
@@ -379,7 +379,7 @@ def physical_mean_depth(seq: Sequence, query_ts: np.ndarray, atmosphere_pa: floa
 
 
 def offline_labels(seq: Sequence, query_ts: np.ndarray, window: int, polyorder: int) -> np.ndarray:
-    """用原始 Tag XY/yaw 构造离线机体系 ``[vx, vy, r]`` 标签。"""
+    """Construct offline body-frame ``[vx, vy, r]`` labels from raw tag XY/yaw."""
     count = len(seq.tag_ts)
     window = min(int(window), count if count % 2 else count - 1)
     if window < 5 or window <= polyorder:
@@ -414,10 +414,10 @@ def _label_window_samples(cfg: dict[str, Any]) -> int:
 
 
 class V20WindowDataset(Dataset):
-    """V20--V23 的因果窗口数据集，训练和评估共用同一特征构造。
+    """V20--V23 causal-window dataset with shared training/evaluation feature construction.
 
-    V20 使用 ``200 Hz -> 200 Hz`` 直接窗口；V21/V22/V23 分别使用 2/4/5 点
-    因果均值。每个网络特征块均截止于当前输出时刻，因此不会访问未来数据。
+    V20 uses direct ``200 Hz -> 200 Hz`` windows; V21/V22/V23 use causal means of 2/4/5 samples,
+    respectively. Each network feature block ends at the current output time and never accesses future data.
     """
 
     input_keys = ("rpm", "accel_xy", "gyro_z", "depth")
@@ -436,7 +436,7 @@ class V20WindowDataset(Dataset):
             raise ValueError("source_sample_hz / network_input_hz must be a positive integer")
         if not np.isclose(self.source_hz / self.output_hz, self.stride) or self.stride < 1:
             raise ValueError("source_sample_hz / network_hz must be a positive integer")
-        # V21/V22/V23 分别需要 256*2 / 256*4 / 256*5 个原始样本；V20 系数为 1 时退化回 256 点。
+        # V21/V22/V23 require 256*2 / 256*4 / 256*5 raw samples; V20 uses 256 points with factor 1.
         self.raw_window_samples = self.window * self.downsample_factor
         self.sequences = [load_sequence(path) for path in paths]
         self.windows: list[dict[str, np.ndarray]] = []
@@ -462,14 +462,14 @@ class V20WindowDataset(Dataset):
                 np.isfinite(depth[end_idx, 0]) &
                 np.isfinite(depth[end_idx - self.raw_window_samples + 1, 0])
             )
-            # CSV 记录可定位到原始 RPM 饱和帧。针对当前真实窗口长度动态扩展：
-            # 只要饱和样本落入当前原始历史（V20--V23）就拒绝该窗口。
+            # CSV records identify raw RPM saturation samples. Expand exclusions using the actual current window length:
+            # reject a window whenever a saturated sample lies within its raw history (V20--V23).
             if seq.rpm_saturation_times_s is not None and len(seq.rpm_saturation_times_s):
                 history_s = (self.raw_window_samples - 1) / self.source_hz
                 intervals = np.column_stack((seq.rpm_saturation_times_s,
                                              seq.rpm_saturation_times_s + history_s))
             else:
-                # 旧 HDF5 或旧 fixture 没有饱和样本行时，向后兼容已有窗口端点区间。
+                # For legacy HDF5 or fixtures without saturation rows, retain existing window-end intervals for compatibility.
                 intervals = seq.network_window_exclusion_end_intervals_s
             if intervals is not None and len(intervals):
                 endpoint_time = seq.imu_ts[end_idx]
@@ -504,14 +504,14 @@ class V20WindowDataset(Dataset):
             raise ValueError("V20 RPM normalizer must be exactly mean=0, std=1000 for every channel")
 
     def _feature_window(self, sequence_index: int, start: int, key: str) -> np.ndarray:
-        """返回单个网络输入窗口；降采样实验在此执行因果块均值，避免复制全量窗口。"""
+        """Return one network window; apply causal block means here for downsampling without copying all windows."""
         raw = self.windows[sequence_index][key][start]
         if self.downsample_factor == 1:
             return raw
         return raw.reshape(raw.shape[0], self.window, self.downsample_factor).mean(axis=2)
 
     def fit_normalizer(self, maximum_windows: int = 4096) -> dict[str, np.ndarray]:
-        """以训练集的统一 z-score 统计量拟合非 RPM 通道。"""
+        """Fit shared training-set z-score statistics for non-RPM channels."""
         selection = np.linspace(0, len(self.entries) - 1, min(len(self.entries), maximum_windows), dtype=int)
         output: dict[str, np.ndarray] = {
             "rpm_mean": np.zeros(8, dtype=np.float32),
@@ -547,7 +547,7 @@ class V20WindowDataset(Dataset):
 
 def validate_dataset(manifest_path: str | Path, data_root: str | Path,
                      cfg: dict[str, Any] | None = None) -> dict[str, Any]:
-    """检查全部记录、CSV 契约、数据划分及可用因果窗口，返回 JSON 友好报告。"""
+    """Check all records, CSV contracts, splits, and usable causal windows; return a JSON-compatible report."""
     splits = resolve_manifest(manifest_path, data_root)
     report: dict[str, Any] = {"splits": {}, "ok": True}
     for split, paths in splits.items():
@@ -555,8 +555,8 @@ def validate_dataset(manifest_path: str | Path, data_root: str | Path,
         usable_windows = 0
         source_formats: set[str] = set()
         for path in paths:
-            # 有配置时由 Dataset 读取一次即可；避免 validate 为同一大型 CSV
-            # 先读一次、构造窗口时又读第二次，导致训练前检查无谓地翻倍耗时。
+            # When configured, read each file once through Dataset rather than reading the same large CSV
+            # separately for validation and window construction, which would double preflight time.
             record_dataset = V20WindowDataset([path], cfg) if cfg is not None else None
             seq = record_dataset.sequences[0] if record_dataset is not None else load_sequence(path)
             durations.append(float(seq.imu_ts[-1] - seq.imu_ts[0]))

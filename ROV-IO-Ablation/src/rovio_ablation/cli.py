@@ -1,15 +1,15 @@
-"""各实验 train.py 共用的命令行实现。
+"""Shared command-line implementation for experiment train.py entry points.
 
-本工程默认使用 V24 六点均值特征；各实验在自己的 YAML 中绑定模型。最常用的命令为：
+This project defaults to V24 six-sample mean features; each experiment selects its model in YAML. Common commands:
 
     python train.py train
 
-脚本默认读取主目录下的 ``dataset/processed`` CSV 数据。如数据集不在默认
-位置，则通过 ``--data-root`` 指定其根目录（即包含 ``processed`` 的目录）。所有命令和参数均可用
-``python train.py --help`` 或 ``python train.py train --help`` 查看。
+By default, read CSV data from ``dataset/processed`` under the main directory. If the dataset is elsewhere,
+set ``--data-root`` to its root (the directory containing ``processed``). List all commands and arguments with
+``python train.py --help`` or ``python train.py train --help``.
 
-配置优先级：命令行参数 > YAML 配置文件 > 本脚本内置默认路径。训练开始后，
-最终生效的配置会写入本次 runs 目录，之后即使修改 YAML 也不会改变旧实验。
+Configuration priority: command-line arguments > YAML > built-in default paths. At training start,
+save the resolved configuration in the run directory; later YAML edits do not change previous experiments.
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from typing import Any
 
 
 # -----------------------------------------------------------------------------
-# 初学者通常只需修改或在命令行覆盖以下三个路径；不要把 raw 数据目录传进来。
+# Usually only these three paths need editing or CLI overrides; do not pass a raw-data directory.
 # -----------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_ROOT = PROJECT_ROOT.parent / "dataset"
@@ -32,82 +32,82 @@ DEFAULT_RUNS_ROOT = PROJECT_ROOT / "runs"
 
 
 def _add_data_arguments(parser: argparse.ArgumentParser, *, include_config: bool = True) -> None:
-    """添加所有读取数据所需的公共参数，避免各命令的语义不一致。"""
+    """Add shared data-reading arguments with consistent semantics across commands."""
     parser.add_argument(
         "--data-root",
         type=Path,
         default=DEFAULT_DATA_ROOT,
-        help="数据集根目录，内部必须包含 processed/、processed/manifest.csv 以及 v1/v2 CSV。",
+        help="Dataset root containing processed/, processed/manifest.csv, and v1/v2 CSV files.",
     )
     parser.add_argument(
         "--manifest",
         type=Path,
         default=DEFAULT_MANIFEST,
-        help="数据划分 YAML；默认使用论文固定划分，不建议随意修改。",
+        help="Data-split YAML; defaults to the fixed paper split, which should normally be retained.",
     )
     if include_config:
         parser.add_argument(
             "--config",
             type=Path,
             default=DEFAULT_CONFIG,
-            help="实验 YAML 配置；未覆盖的参数均从此文件读取。",
+            help="Experiment YAML configuration; supplies all parameters not explicitly overridden.",
         )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="ROV-IO-Ablation：V24 消融 ROV 速度网络训练与评估。",
+        description="ROV-IO-Ablation: train and evaluate V24 ablation networks for ROV velocity.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    commands = parser.add_subparsers(dest="command", required=True, title="可用命令")
+    commands = parser.add_subparsers(dest="command", required=True, title="Available commands")
 
-    show = commands.add_parser("show-config", help="打印默认 YAML 配置，方便修改前查阅。")
-    show.add_argument("--config", type=Path, default=DEFAULT_CONFIG, help="要显示的 YAML 配置文件。")
+    show = commands.add_parser("show-config", help="Print the default YAML configuration before editing.")
+    show.add_argument("--config", type=Path, default=DEFAULT_CONFIG, help="YAML configuration file to display.")
 
-    validate = commands.add_parser("validate", help="检查 processed CSV、200 Hz 时间轴、字段和划分。")
+    validate = commands.add_parser("validate", help="Check processed CSV files, 200 Hz timelines, fields, and splits.")
     _add_data_arguments(validate)
-    validate.add_argument("--write-report", type=Path, default=None, help="可选：将 JSON 检查报告写入此文件。")
+    validate.add_argument("--write-report", type=Path, default=None, help="Optionally write the JSON validation report to this file.")
 
-    train = commands.add_parser("train", help="从随机初始化开始一个新的不可覆盖训练实验。")
+    train = commands.add_parser("train", help="Start a new training run from random initialization without overwriting existing runs.")
     _add_data_arguments(train)
-    train.add_argument("--runs-root", type=Path, default=DEFAULT_RUNS_ROOT, help="所有实验运行目录的父目录。")
-    train.add_argument("--name", type=str, default=None, help="本次实验标识；保存在冻结配置中，输出位置由 runs-root 控制。")
-    train.add_argument("--seed", type=int, default=None, help="随机种子；相同环境下有助于复现。")
-    train.add_argument("--device", choices=("auto", "cuda", "cpu"), default=None, help="训练设备。")
-    train.add_argument("--epochs", type=int, default=None, help="总训练轮数。")
-    train.add_argument("--phase1-epochs", type=int, default=None, help="仅 Huber 损失的前期轮数。")
-    train.add_argument("--batch-size", type=int, default=None, help="每个优化步的窗口数量；显存不足时调小。")
-    train.add_argument("--num-workers", type=int, default=None, help="DataLoader 子进程数；Windows 建议先保持 0。")
-    train.add_argument("--learning-rate", type=float, default=None, help="AdamW 初始学习率。")
-    train.add_argument("--weight-decay", type=float, default=None, help="AdamW 权重衰减。")
-    train.add_argument("--grad-clip-norm", type=float, default=None, help="梯度范数裁剪阈值。")
-    train.add_argument("--nll-weight", type=float, default=None, help="第二阶段 Gaussian NLL 的权重。")
-    train.add_argument("--log-every-batches", type=int, default=None, help="大于 0 时额外打印每 N 个 batch 的训练损失。")
-    train.add_argument("--plot-dpi", type=int, default=None, help="训练结束后速度图的分辨率。")
-    train.add_argument("--deterministic", action="store_true", help="强制确定性 CUDA 算法；速度可能下降。")
-    train.add_argument("--enable-tf32", action="store_true", help="允许 RTX 卡使用 TF32；仅吞吐实验建议开启。")
-    train.add_argument("--skip-demo", action="store_true", help="训练结束后不生成留出 demo 图，仅保留验证集结果。")
-    train.add_argument("--print-resolved-config", action="store_true", help="打印命令行覆盖后的配置并退出，不启动训练。")
+    train.add_argument("--runs-root", type=Path, default=DEFAULT_RUNS_ROOT, help="Parent directory for all experiment runs.")
+    train.add_argument("--name", type=str, default=None, help="Experiment identifier saved in the frozen configuration; runs-root controls the output location.")
+    train.add_argument("--seed", type=int, default=None, help="Random seed to aid reproducibility in the same environment.")
+    train.add_argument("--device", choices=("auto", "cuda", "cpu"), default=None, help="Training device.")
+    train.add_argument("--epochs", type=int, default=None, help="Total number of training epochs.")
+    train.add_argument("--phase1-epochs", type=int, default=None, help="Number of initial Huber-only epochs.")
+    train.add_argument("--batch-size", type=int, default=None, help="Windows per optimization step; reduce if GPU memory is insufficient.")
+    train.add_argument("--num-workers", type=int, default=None, help="DataLoader worker processes; start with 0 on Windows.")
+    train.add_argument("--learning-rate", type=float, default=None, help="Initial AdamW learning rate.")
+    train.add_argument("--weight-decay", type=float, default=None, help="AdamW weight decay.")
+    train.add_argument("--grad-clip-norm", type=float, default=None, help="Gradient-norm clipping threshold.")
+    train.add_argument("--nll-weight", type=float, default=None, help="Gaussian NLL weight in the second phase.")
+    train.add_argument("--log-every-batches", type=int, default=None, help="If positive, also print training loss every N batches.")
+    train.add_argument("--plot-dpi", type=int, default=None, help="Resolution of post-training velocity figures.")
+    train.add_argument("--deterministic", action="store_true", help="Require deterministic CUDA algorithms; may reduce speed.")
+    train.add_argument("--enable-tf32", action="store_true", help="Allow TF32 on RTX GPUs; recommended only for throughput experiments.")
+    train.add_argument("--skip-demo", action="store_true", help="Skip held-out demonstration plots after training and retain validation results only.")
+    train.add_argument("--print-resolved-config", action="store_true", help="Print the configuration after CLI overrides and exit without training.")
 
-    resume = commands.add_parser("resume", help="从某个 runs 目录内的 last.pt 继续中断的训练。")
-    resume.add_argument("--run-dir", type=Path, required=True, help="待恢复的具体 runs/<实验>/<时间戳> 目录。")
-    resume.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT, help="同一版本 processed 数据集根目录。")
+    resume = commands.add_parser("resume", help="Resume interrupted training from last.pt in a run directory.")
+    resume.add_argument("--run-dir", type=Path, required=True, help="Specific runs/<experiment>/<timestamp> directory to resume.")
+    resume.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT, help="Root of the same processed dataset version.")
 
-    evaluate = commands.add_parser("evaluate", help="使用已保存模型重新生成验证或 demo 的图表和指标。")
-    evaluate.add_argument("--run-dir", type=Path, required=True, help="包含 best.pt、resolved_config.yaml 的训练目录。")
-    evaluate.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT, help="同一版本 processed 数据集根目录。")
-    evaluate.add_argument("--split", choices=("val", "demo"), default="demo", help="需要评估的数据划分。")
-    evaluate.add_argument("--checkpoint", choices=("best", "last"), default="best", help="评估最佳或最后一轮模型。")
-    evaluate.add_argument("--output", type=Path, default=None, help="结果目录；不填则写入该 run 的 evaluation/manual_<split>。")
+    evaluate = commands.add_parser("evaluate", help="Regenerate validation or demonstration plots and metrics using a saved model.")
+    evaluate.add_argument("--run-dir", type=Path, required=True, help="Training directory containing best.pt and resolved_config.yaml.")
+    evaluate.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT, help="Root of the same processed dataset version.")
+    evaluate.add_argument("--split", choices=("val", "demo"), default="demo", help="Data split to evaluate.")
+    evaluate.add_argument("--checkpoint", choices=("best", "last"), default="best", help="Evaluate the best or final-epoch model.")
+    evaluate.add_argument("--output", type=Path, default=None, help="Output directory; defaults to evaluation/manual_<split> under the run.")
 
-    inspect = commands.add_parser("inspect", help="查看 checkpoint 的模型配置、输入契约和最佳指标。")
-    inspect.add_argument("--run-dir", type=Path, required=True, help="训练运行目录。")
-    inspect.add_argument("--checkpoint", choices=("best", "last"), default="best", help="查看的 checkpoint。")
+    inspect = commands.add_parser("inspect", help="Inspect checkpoint model configuration, input contract, and best metrics.")
+    inspect.add_argument("--run-dir", type=Path, required=True, help="Training run directory.")
+    inspect.add_argument("--checkpoint", choices=("best", "last"), default="best", help="Checkpoint to inspect.")
     return parser
 
 
 def _apply_train_overrides(cfg: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
-    """只覆盖用户显式传入的参数，防止命令行默认值悄悄改变 YAML。"""
+    """Override only explicitly supplied arguments so CLI defaults do not silently change YAML settings."""
     cfg = copy.deepcopy(cfg)
     mapping = {
         "name": ("experiment", "name"), "seed": ("experiment", "seed"), "device": ("experiment", "device"),
@@ -132,14 +132,14 @@ def _apply_train_overrides(cfg: dict[str, Any], args: argparse.Namespace) -> dic
 
 def _require_directory(path: Path, label: str) -> None:
     if not path.is_dir():
-        raise FileNotFoundError(f"{label} 不存在：{path}")
+        raise FileNotFoundError(f"{label} does not exist: {path}")
 
 
 def main(experiment_dir: Path) -> None:
     global DEFAULT_CONFIG, DEFAULT_RUNS_ROOT
     DEFAULT_CONFIG = experiment_dir / "config.yaml"
     DEFAULT_RUNS_ROOT = experiment_dir / "runs"
-    # 直接运行本文件即可，无需安装本工程为 Python package。
+    # Run this file directly without installing the project as a Python package.
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
     from rovio_ablation.config import load_config, validate_config
     from rovio_ablation.data import validate_dataset
@@ -151,34 +151,34 @@ def main(experiment_dir: Path) -> None:
         print(args.config.read_text(encoding="utf-8"), end="")
         return
     if args.command == "validate":
-        _require_directory(args.data_root, "数据集根目录")
+        _require_directory(args.data_root, "Dataset root")
         cfg = load_config(args.config)
         report = validate_dataset(args.manifest, args.data_root, cfg)
         print(json.dumps(report, ensure_ascii=False, indent=2))
         if args.write_report is not None:
             atomic_json(args.write_report, report)
-            print(f"数据检查报告已写入：{args.write_report}")
+            print(f"Data validation report written to: {args.write_report}")
         return
     if args.command == "train":
-        _require_directory(args.data_root, "数据集根目录")
+        _require_directory(args.data_root, "Dataset root")
         cfg = validate_config(_apply_train_overrides(load_config(args.config), args))
         if args.print_resolved_config:
             print(json.dumps(cfg, ensure_ascii=False, indent=2))
             return
         run_dir = train_new(cfg, args.config, args.manifest, args.data_root, args.runs_root, PROJECT_ROOT, sys.argv)
-        print(f"\n训练和自动评估已完成。实验目录：\n{run_dir}")
+        print(f"\nTraining and automatic evaluation completed. Experiment directory:\n{run_dir}")
         return
     if args.command == "resume":
-        _require_directory(args.data_root, "数据集根目录")
+        _require_directory(args.data_root, "Dataset root")
         run_dir = resume_run(args.run_dir, args.data_root, PROJECT_ROOT, sys.argv)
-        print(f"\n恢复训练完成。实验目录：\n{run_dir}")
+        print(f"\nResumed training completed. Experiment directory:\n{run_dir}")
         return
     if args.command == "evaluate":
-        _require_directory(args.data_root, "数据集根目录")
+        _require_directory(args.data_root, "Dataset root")
         summary = evaluate_existing_run(args.run_dir, args.data_root, args.split, args.checkpoint, args.output, PROJECT_ROOT)
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         return
     if args.command == "inspect":
         print(canonical_json(inspect_existing_run(args.run_dir, args.checkpoint)))
         return
-    raise RuntimeError(f"未知命令：{args.command}")
+    raise RuntimeError(f"Unknown command: {args.command}")

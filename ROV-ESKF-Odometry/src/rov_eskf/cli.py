@@ -1,4 +1,4 @@
-"""唯一命令行入口：加载配置、创建不可覆盖运行目录并执行回放。"""
+"""Command-line entry point: load configuration, create a new run directory, and execute replay."""
 from __future__ import annotations
 
 import argparse
@@ -18,14 +18,14 @@ from .model import load_checkpoint
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="11 状态姿态辅助 ESKF 里程计")
-    parser.add_argument("--config", default="configs/benchmark_apriltag_init.yaml", help="YAML 配置路径")
-    parser.add_argument("--split", choices=["train", "val", "demo"], help="覆盖配置中的数据 split")
-    parser.add_argument("--record", help="单条 HDF5；仍会加载配置指定的网络 checkpoint")
-    parser.add_argument("--device", choices=["cpu", "cuda", "auto"], help="覆盖 model.device")
-    parser.add_argument("--out", help="输出根目录；每次仍自动创建独立 run 子目录")
-    parser.add_argument("--run-name", help="本次运行名称")
-    parser.add_argument("--check-config", action="store_true", help="仅校验配置、路径与依赖，不运行回放")
+    parser = argparse.ArgumentParser(description="11-state attitude-aided ESKF odometry")
+    parser.add_argument("--config", default="configs/benchmark_apriltag_init.yaml", help="Path to YAML configuration")
+    parser.add_argument("--split", choices=["train", "val", "demo"], help="Override the configured data split")
+    parser.add_argument("--record", help="Single HDF5 record; still loads the checkpoint specified in the configuration")
+    parser.add_argument("--device", choices=["cpu", "cuda", "auto"], help="Override model.device")
+    parser.add_argument("--out", help="Output root; a separate run subdirectory is created automatically")
+    parser.add_argument("--run-name", help="Name of this run")
+    parser.add_argument("--check-config", action="store_true", help="Validate configuration, paths, and dependencies without replay")
     return parser
 
 
@@ -33,7 +33,7 @@ def _device(name: str) -> str:
     if name == "auto":
         return "cuda" if torch.cuda.is_available() else "cpu"
     if name == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("配置要求 CUDA，但当前 PyTorch 未检测到可用 CUDA")
+        raise RuntimeError("CUDA is required by the configuration, but PyTorch detected no available CUDA device")
     return name
 
 
@@ -76,9 +76,9 @@ def main(argv: list[str] | None = None) -> int:
     device = _device(str(config["model"]["device"]))
     if args.check_config:
         checkpoint = Path(config["model"]["checkpoint"])
-        print(f"配置有效：mode={config['evaluation']['mode']}，device={device}")
-        print(f"checkpoint: {checkpoint} ({'存在' if checkpoint.is_file() else '缺失'})")
-        print(f"data root: {config['data']['root']} ({'存在' if Path(config['data']['root']).is_dir() else '缺失'})")
+        print(f"Configuration valid: mode={config['evaluation']['mode']}, device={device}")
+        print(f"checkpoint: {checkpoint} ({'present' if checkpoint.is_file() else 'missing'})")
+        print(f"data root: {config['data']['root']} ({'present' if Path(config['data']['root']).is_dir() else 'missing'})")
         return 0
     directory = _run_dir(config, args.out, args.run_name); _write_run_metadata(directory, config, args.config, device)
     if args.record:
@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         summary = evaluate_split(config["data"]["split"], config, directory, device)
     (directory / "console_summary.json").write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
-    print(f"完成：{directory}")
+    print(f"Completed: {directory}")
     for row in summary["records"]:
         metrics = row["metrics"]; print(f"{row['record']}: " + ", ".join(f"{k}={v:.4f}" for k, v in metrics.items() if k.endswith("rmse_m") or k.endswith("rmse_rad") or k.endswith("rmse_mps")))
     return 0

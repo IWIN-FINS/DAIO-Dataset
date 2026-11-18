@@ -1,7 +1,7 @@
-"""数据契约：运行时传感器流与离线 AprilTag 参考严格分离。
+"""Data contract: strictly separate runtime sensor streams from offline AprilTag references.
 
-同时支持历史 HDF5 和最终 ``dataset/processed`` 的 200 Hz CSV。CSV 的 ``pressure``
-已经是四压力计均值换算后的物理深度[m]，而 ``yaw`` 是 IMU 解算的多圈角度[rad]。
+Supports legacy HDF5 and final 200 Hz CSV files in ``dataset/processed``. CSV ``pressure``
+is physical depth [m] converted from the four-pressure-sensor mean; ``yaw`` is IMU-solved multi-turn angle [rad].
 """
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ from scipy.signal import savgol_filter
 
 @dataclass(frozen=True)
 class Sequence:
-    """单条记录的运行时传感器数据。
+    """Runtime sensor data for a single record.
 
-    AprilTag 字段可选：部署回放不要求 HDF5 含这些字段；只有离线
-    标签、benchmark 初始化和指标计算会显式要求它们。
+    AprilTag fields are optional: deployment replay does not require them in HDF5. Only offline
+    labels, benchmark initialization, and metric computation explicitly require these fields.
     """
 
     path: Path
@@ -41,7 +41,7 @@ class Sequence:
     tag_xy: np.ndarray | None = None
     tag_yaw: np.ndarray | None = None
     tag_yaw_rate: np.ndarray | None = None
-    # 新 CSV 只有一个已换算的平均深度；保留为独立字段，避免伪造四压力阵列语义。
+    # New CSV files contain one converted mean depth; retain it separately without implying a four-sensor array.
     mean_depth_m: np.ndarray | None = None
     source_format: str = "legacy_hdf5"
     throttle: np.ndarray | None = None
@@ -50,7 +50,7 @@ class Sequence:
 
 def _increasing(name: str, ts: np.ndarray, value: np.ndarray) -> None:
     if ts.ndim != 1 or len(ts) < 2 or len(ts) != len(value) or not np.all(np.diff(ts) > 0):
-        raise ValueError(f"{name}: 时间戳必须严格递增，且长度应与数据一致")
+        raise ValueError(f"{name}: timestamps must be strictly increasing and match the data length")
 
 
 def _optional_reference(handle: h5py.File) -> tuple[np.ndarray | None, ...]:
@@ -60,7 +60,7 @@ def _optional_reference(handle: h5py.File) -> tuple[np.ndarray | None, ...]:
         return None, None, None, None
     if not all(present):
         missing = [name for name, ok in zip(required, present) if not ok]
-        raise ValueError(f"{handle.filename}: AprilTag 字段不完整: {missing}")
+        raise ValueError(f"{handle.filename}: incomplete AprilTag fields: {missing}")
     ts = np.asarray(handle["apriltag/ts"], dtype=np.float64)
     return (ts, np.asarray(handle["apriltag/xy"], dtype=np.float64),
             np.unwrap(np.asarray(handle["apriltag/yaw"], dtype=np.float64)),
@@ -68,7 +68,7 @@ def _optional_reference(handle: h5py.File) -> tuple[np.ndarray | None, ...]:
 
 
 def load_sequence(path: str | Path, *, require_reference: bool = False) -> Sequence:
-    """读取可部署运行的传感器数据；``require_reference`` 仅用于离线评估。"""
+    """Read sensors for deployable operation; ``require_reference`` is for offline evaluation only."""
     path = Path(path)
     if path.suffix.lower() == ".csv":
         seq = _load_processed_csv(path)
@@ -80,10 +80,10 @@ def load_sequence(path: str | Path, *, require_reference: bool = False) -> Seque
                     "depth/ts", "depth/depth4", "aux/native_ts", "aux/rpy_logged_rad")
         missing = [name for name in required if name not in handle]
         if missing:
-            raise ValueError(f"{path}: 缺少运行时必需字段 {missing}")
+            raise ValueError(f"{path}: missing required runtime fields {missing}")
         raw = handle.attrs.get("depth_calibration")
         if raw is None:
-            raise ValueError(f"{path}: 缺少 depth_calibration 属性")
+            raise ValueError(f"{path}: missing depth_calibration attribute")
         if isinstance(raw, bytes):
             raw = raw.decode("utf-8")
         calibration = json.loads(str(raw))
@@ -121,25 +121,25 @@ _CSV_REQUIRED = (
 
 
 def _load_processed_csv(path: Path) -> Sequence:
-    """读取最终 200 Hz CSV；只把 Tag 写入离线参考字段，运行时不使用它。"""
+    """Read final 200 Hz CSV data; store tags only in offline reference fields, never runtime inputs."""
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         if reader.fieldnames is None:
-            raise ValueError(f"{path}: CSV 缺少表头")
+            raise ValueError(f"{path}: CSV header is missing")
         missing = sorted(set(_CSV_REQUIRED) - set(reader.fieldnames))
         if missing:
-            raise ValueError(f"{path}: CSV 缺少字段 {missing}")
+            raise ValueError(f"{path}: CSV fields are missing: {missing}")
         rows = list(reader)
     if len(rows) < 2:
-        raise ValueError(f"{path}: CSV 样本不足")
+        raise ValueError(f"{path}: insufficient CSV samples")
 
     def column(name: str) -> np.ndarray:
         try:
             values = np.asarray([float(row[name]) for row in rows], dtype=np.float64)
         except (KeyError, TypeError, ValueError) as error:
-            raise ValueError(f"{path}: {name} 存在缺失或非数值值") from error
+            raise ValueError(f"{path}: {name} contains missing or nonnumeric values") from error
         if not np.all(np.isfinite(values)):
-            raise ValueError(f"{path}: {name} 包含 NaN/Inf")
+            raise ValueError(f"{path}: {name} contains NaN/Inf")
         return values
 
     ts = column("sample_time_s")
@@ -148,12 +148,12 @@ def _load_processed_csv(path: Path) -> Sequence:
     full_gyro = all(c in reader.fieldnames for c in ('gyro_x','gyro_y'))
     gyro = np.column_stack(tuple(column(f'gyro_{a}') for a in 'xyz')) if full_gyro else np.column_stack((np.zeros_like(gyro_z), np.zeros_like(gyro_z), gyro_z))
     rpm = np.column_stack([column(f"int_rpm_{index}") for index in range(1, 9)])
-    # 新数据的 yaw 已是多圈 rad；只 unwrap 防御可能的日志包装，不做单位缩放。
-    # roll/pitch 依照近水平假设固定为零。
+    # New-data yaw is already in multi-turn radians; unwrap defensively for logging wraparound without unit conversion.
+    # Fix roll/pitch at zero under the near-level assumption.
     yaw_rad = np.unwrap(column("yaw"))
     attitude = np.column_stack((np.zeros_like(yaw_rad), np.zeros_like(yaw_rad), yaw_rad))
     depth = column("pressure")
-    # 深度与网络在同一 50 Hz 时刻更新：选择每个 20 ms 区间的末端 200 Hz 样本。
+    # Update depth and the network at the same 50 Hz instants: take the last 200 Hz sample in each 20 ms interval.
     depth_indices = np.arange(3, len(ts), 4, dtype=int)
     seq = Sequence(
         path=path, imu_ts=ts, accel=accel, gyro=gyro, rpm_ts=ts.copy(), rpm=rpm,
@@ -170,9 +170,9 @@ def _load_processed_csv(path: Path) -> Sequence:
 
 
 def require_apriltag(seq: Sequence) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """仅供离线层调用，避免 AprilTag 误进入运行时融合。"""
+    """Offline-only access to prevent AprilTag from entering runtime fusion."""
     if any(value is None for value in (seq.tag_ts, seq.tag_xy, seq.tag_yaw, seq.tag_yaw_rate)):
-        raise ValueError(f"{seq.path}: 此操作需要离线 AprilTag 参考")
+        raise ValueError(f"{seq.path}: this operation requires an offline AprilTag reference")
     return seq.tag_ts, seq.tag_xy, seq.tag_yaw, seq.tag_yaw_rate  # type: ignore[return-value]
 
 
@@ -182,54 +182,54 @@ def _validate_sequence(seq: Sequence) -> None:
     _increasing(f"{seq.path}: depth", seq.depth_ts, seq.depth4)
     _increasing(f"{seq.path}: attitude", seq.attitude_ts, seq.attitude_rpy)
     if seq.accel.shape != seq.gyro.shape or seq.accel.ndim != 2 or seq.accel.shape[1] != 3:
-        raise ValueError(f"{seq.path}: imu/accel 与 imu/gyro 必须为 [N,3]")
+        raise ValueError(f"{seq.path}: imu/accel and imu/gyro must have shape [N,3]")
     if seq.rpm.shape != (len(seq.imu_ts), 8) or not np.allclose(seq.rpm_ts, seq.imu_ts, atol=2e-4, rtol=0):
-        raise ValueError(f"{seq.path}: RPM 必须为与 200 Hz IMU 对齐的 [N,8]")
+        raise ValueError(f"{seq.path}: RPM must have shape [N,8] aligned with the 200 Hz IMU")
     if seq.depth4.ndim != 2 or seq.depth4.shape[1] != 4 or seq.depth4_raw.shape != seq.depth4.shape:
-        raise ValueError(f"{seq.path}: depth4/depth4_raw 必须为同形 [N,4]")
+        raise ValueError(f"{seq.path}: depth4/depth4_raw must have matching shape [N,4]")
     if seq.attitude_rpy.ndim != 2 or seq.attitude_rpy.shape[1] != 3:
-        raise ValueError(f"{seq.path}: aux/rpy_logged_rad 必须为 [N,3]")
+        raise ValueError(f"{seq.path}: aux/rpy_logged_rad must have shape [N,3]")
     if not np.allclose(np.diff(seq.imu_ts), 1 / 200.0, atol=2e-4, rtol=0):
-        raise ValueError(f"{seq.path}: 当前 V20/ESKF 契约要求规则 200 Hz IMU")
+        raise ValueError(f"{seq.path}: the current V20/ESKF contract requires regular 200 Hz IMU samples")
     if seq.pressure_zero_pa.shape != (4,) or seq.pressure_to_depth_m_per_pa <= 0:
-        raise ValueError(f"{seq.path}: 压力标定元数据无效")
+        raise ValueError(f"{seq.path}: invalid pressure calibration metadata")
     if seq.mean_depth_m is not None and (seq.mean_depth_m.shape != seq.imu_ts.shape or
                                          not np.all(np.isfinite(seq.mean_depth_m))):
-        raise ValueError(f"{seq.path}: mean_depth_m 必须是有限 [N]")
+        raise ValueError(f"{seq.path}: mean_depth_m must be finite with shape [N]")
     runtime_arrays = (seq.accel, seq.gyro, seq.rpm, seq.depth4, seq.depth4_raw, seq.attitude_rpy)
     if not all(np.all(np.isfinite(value)) for value in runtime_arrays):
-        raise ValueError(f"{seq.path}: 运行时传感器字段含 NaN/Inf")
+        raise ValueError(f"{seq.path}: runtime sensor fields contain NaN/Inf")
     if seq.tag_ts is not None:
         assert seq.tag_xy is not None and seq.tag_yaw is not None and seq.tag_yaw_rate is not None
         _increasing(f"{seq.path}: apriltag", seq.tag_ts, seq.tag_xy)
         if seq.tag_xy.shape != (len(seq.tag_ts), 2) or seq.tag_yaw.shape != seq.tag_ts.shape \
                 or seq.tag_yaw_rate.shape != seq.tag_ts.shape:
-            raise ValueError(f"{seq.path}: AprilTag 形状无效")
+            raise ValueError(f"{seq.path}: invalid AprilTag shape")
 
 
 def resolve_manifest(manifest_path: str | Path, data_root: str | Path) -> dict[str, list[Path]]:
     manifest = yaml.safe_load(Path(manifest_path).read_text(encoding="utf-8"))
     if manifest.get("offline_apriltag_only") is not True:
-        raise ValueError("manifest 必须声明 offline_apriltag_only: true")
+        raise ValueError("manifest must declare offline_apriltag_only: true")
     root = Path(data_root) / str(manifest.get("processed_root", "."))
     output: dict[str, list[Path]] = {}
     for split in ("train", "val", "demo"):
         entry = manifest.get("splits", {}).get(split)
         if not isinstance(entry, dict):
-            raise ValueError(f"manifest 缺少 split={split}")
+            raise ValueError(f"manifest is missing split={split}")
         paths = sorted(root.glob(str(entry["glob"])))
         if len(paths) != int(entry["expected_count"]):
-            raise ValueError(f"{split}: 期望 {entry['expected_count']} 条，实际 {len(paths)} 条")
+            raise ValueError(f"{split}: expected {entry['expected_count']} records, found {len(paths)}")
         output[split] = paths
     flat = [path.resolve() for records in output.values() for path in records]
     if len(flat) != len(set(flat)):
-        raise ValueError("manifest split 泄漏：同一记录出现在多个 split")
+        raise ValueError("manifest split leakage: the same record appears in multiple splits")
     return output
 
 
 def physical_mean_depth(seq: Sequence, query_ts: np.ndarray, atmosphere_pa: float,
                         water_density_kg_m3: float, gravity_mps2: float) -> np.ndarray:
-    """网络深度特征：CSV 直用物理深度，旧 HDF5 保持原始恢复规则。"""
+    """Network depth features: use physical CSV depth directly and retain legacy HDF5 reconstruction rules."""
     if seq.mean_depth_m is not None:
         index = np.searchsorted(seq.imu_ts, np.asarray(query_ts, dtype=np.float64), side="right") - 1
         output = np.full(len(index), np.nan, dtype=np.float64)
@@ -245,12 +245,12 @@ def physical_mean_depth(seq: Sequence, query_ts: np.ndarray, atmosphere_pa: floa
 
 
 def height_from_depth4(depth4_row: np.ndarray) -> float:
-    """滤波观测：校准相对深度平均值转换为 FLU 向上高度。"""
+    """Filter observation: convert calibrated mean relative depth to upward FLU height."""
     return -float(np.mean(np.asarray(depth4_row, dtype=float)))
 
 
 def height_measurement(seq: Sequence, index: int) -> float:
-    """返回 FLU 向上高度；CSV 的单路深度与历史四阵列分别处理。"""
+    """Return upward FLU height, handling single-channel CSV depth and legacy four-sensor arrays separately."""
     if seq.mean_depth_m is not None:
         imu_index = int(np.searchsorted(seq.imu_ts, seq.depth_ts[index], side="right") - 1)
         return -float(seq.mean_depth_m[imu_index])
@@ -258,12 +258,12 @@ def height_measurement(seq: Sequence, index: int) -> float:
 
 
 def offline_labels(seq: Sequence, query_ts: np.ndarray, window: int, polyorder: int) -> np.ndarray:
-    """离线训练标签 [body vx, body vy, Euler yaw-rate]。"""
+    """Offline training labels [body vx, body vy, Euler yaw-rate]."""
     tag_ts, tag_xy, tag_yaw, _ = require_apriltag(seq)
     count = len(tag_ts)
     window = min(int(window), count if count % 2 else count - 1)
     if window < 5 or window <= polyorder:
-        raise ValueError(f"{seq.path}: AprilTag 样本不足以构造平滑标签")
+        raise ValueError(f"{seq.path}: insufficient AprilTag samples for smoothed labels")
     xy = savgol_filter(tag_xy, window, polyorder, axis=0, mode="interp")
     yaw = savgol_filter(tag_yaw, window, polyorder, mode="interp")
     world_velocity = np.gradient(xy, tag_ts, axis=0, edge_order=1)

@@ -1,4 +1,4 @@
-"""数据契约、两阶段训练、断点恢复与回溯测试。"""
+"""Tests for data contracts, two-phase training, resumption, and provenance."""
 from pathlib import Path
 import copy
 import json
@@ -31,7 +31,7 @@ def test_same_windows_and_no_inactive_statistics(csv_data):
         else:
             np.testing.assert_array_equal(reference[0],ends)
             np.testing.assert_array_equal(reference[1],targets)
-        assert ends[0] > 1535/200 # 第0帧异常覆盖首个窗口，所有消融均排除它。
+        assert ends[0] > 1535/200 # The frame-0 anomaly overlaps the first window, which all ablations exclude.
         for key in dataset.input_keys:
             idx,start,_,_ = dataset.entries[0]
             raw = dataset.windows[idx][key][start]

@@ -1,4 +1,4 @@
-"""异步回放：200 Hz IMU 传播、原始深度事件与 50 Hz 网络独立更新。"""
+"""Asynchronous replay: 200 Hz IMU propagation, raw depth events, and independent 50 Hz network updates."""
 from __future__ import annotations
 
 import csv
@@ -36,7 +36,7 @@ class Replay11Output:
 
 
 def _event_intervals(event_ts: np.ndarray, imu_ts: np.ndarray) -> dict[int, list[int]]:
-    """将事件放入唯一 IMU 区间 ``(t_i, t_{i+1}]``。"""
+    """Assign an event to its unique IMU interval ``(t_i, t_{i+1}]``."""
     indices = np.clip(np.searchsorted(imu_ts, event_ts, side="left") - 1, 0, len(imu_ts) - 2)
     groups: dict[int, list[int]] = defaultdict(list)
     for event_index, interval_index in enumerate(indices):
@@ -45,7 +45,7 @@ def _event_intervals(event_ts: np.ndarray, imu_ts: np.ndarray) -> dict[int, list
 
 
 def _startup(sequence: Sequence, config: dict, tilt_all: np.ndarray) -> tuple[np.ndarray, np.ndarray, float, str]:
-    """按用户协议，以完整 0--startup_s 窗口中位数完成初始化。"""
+    """Initialize with medians over the full 0--startup_s window as specified by the protocol."""
     startup_s = float(config["initialization"]["startup_s"])
     stop = float(sequence.imu_ts[0] + startup_s)
     depth_mask = sequence.depth_ts <= stop
@@ -58,7 +58,7 @@ def _startup(sequence: Sequence, config: dict, tilt_all: np.ndarray) -> tuple[np
         height = float(np.median(-depth))
     mask = sequence.imu_ts <= stop
     if len(depth) == 0 or np.count_nonzero(mask) < 20:
-        raise ValueError("初始化窗口内需要足够的深度与 IMU 样本")
+        raise ValueError("The initialization window requires sufficient depth and IMU samples")
     g = np.asarray(config["filter"]["gravity_flu"], dtype=float)
     rotations = np.stack([rotation_matrix_from_tilt_yaw(roll, pitch, 0.0)
                           for roll, pitch in tilt_all[mask]])
@@ -102,19 +102,19 @@ def replay_attitude_aided_11(sequence: Sequence, config: dict, model: torch.nn.M
                              network: NetworkObservations | None = None,
                              reanchor_time: float | None = None,
                              end_time: float | None = None) -> Replay11Output:
-    """运行时不读取 AprilTag；``reanchor_yaw`` 只能由 benchmark 评估层传入。"""
+    """Runtime never reads AprilTag; only the benchmark evaluation layer may supply ``reanchor_yaw``."""
     if (model is None) != (checkpoint is None):
-        raise ValueError("model 与 checkpoint 必须同时提供或同时省略")
+        raise ValueError("model and checkpoint must either both be provided or both be omitted")
     imu_ts = sequence.imu_ts
     if end_time is None:
         last_imu_index = len(imu_ts) - 1
     else:
         last_imu_index = int(np.searchsorted(imu_ts, float(end_time), side="right") - 1)
         if last_imu_index < 1:
-            raise ValueError("回放结束时间早于第二个 IMU 样本")
+            raise ValueError("Replay ends before the second IMU sample")
     max_gap = float(config["debug"]["max_imu_gap_s"])
     if np.any(np.diff(imu_ts) > max_gap):
-        raise ValueError(f"{sequence.path}: IMU 间隔超过 {max_gap:g} s")
+        raise ValueError(f"{sequence.path}: IMU interval exceeds {max_gap:g} s")
     tilt_all = causal_tilt(sequence, imu_ts)
     position, accel_bias, correction_std, startup_source = _startup(sequence, config, tilt_all)
     filter_ = AttitudeAidedESKF11(config["filter"], float(np.median(np.diff(imu_ts))))
@@ -122,14 +122,14 @@ def replay_attitude_aided_11(sequence: Sequence, config: dict, model: torch.nn.M
     yaw_source_cfg = config["filter"].get("yaw_rate_source", {})
     yaw_source_type = str(yaw_source_cfg.get("type", "solved_yaw_backward_difference"))
     if yaw_source_type == "raw_gyro_z":
-        # 此分支不读取 IMU 解算 yaw，也不对其差分；仅以原始 gyro_z 传播 yaw。
+        # This branch neither reads nor differentiates IMU-solved yaw; it propagates yaw from raw gyro_z only.
         yaw_source = raw_gyro_z_source(sequence)
         startup_source += "; yaw_rate_source=raw_gyro_z"
     elif yaw_source_type == "solved_yaw_backward_difference":
         yaw_source = causal_yaw_rate_source(sequence, yaw_source_cfg)
         startup_source += "; yaw_rate_source=solved_yaw_backward_difference"
     else:
-        raise ValueError(f"不支持的 yaw-rate 来源: {yaw_source_type}")
+        raise ValueError(f"Unsupported yaw-rate source: {yaw_source_type}")
 
     if network is None and model is not None:
         network = network_observations(sequence, model, checkpoint, device,
@@ -140,7 +140,7 @@ def replay_attitude_aided_11(sequence: Sequence, config: dict, model: torch.nn.M
         for index, time in enumerate(network.ts):
             imu_index = int(np.searchsorted(imu_ts, time, side="left"))
             if imu_index >= len(imu_ts) or abs(float(imu_ts[imu_index]) - float(time)) > 1e-7:
-                raise ValueError("网络时间戳必须对齐到 IMU 时间轴")
+                raise ValueError("Network timestamps must align with the IMU timeline")
             network_groups[imu_index] = index
     depth_groups = _event_intervals(sequence.depth_ts, imu_ts)
     attitude_groups = _event_intervals(sequence.attitude_ts[1:], imu_ts)
@@ -152,7 +152,7 @@ def replay_attitude_aided_11(sequence: Sequence, config: dict, model: torch.nn.M
         requested_reanchor = startup_time if reanchor_time is None else float(reanchor_time)
         reanchor_index = int(np.searchsorted(imu_ts, requested_reanchor, side="left"))
         if reanchor_index < 1 or reanchor_index > last_imu_index:
-            raise ValueError("yaw 重锚时间必须位于本次回放的 IMU 时间范围内")
+            raise ValueError("Yaw re-anchor time must lie within the replay IMU time range")
     state = np.empty((last_imu_index + 1, 15)); covariance = np.empty((last_imu_index + 1, 11))
     state[0] = _pack(filter_, *tilt_all[0]); covariance[0] = np.diag(filter_.P)
     update_ts: list[float] = []; update_kind: list[str] = []; update_ok: list[bool] = []
@@ -190,7 +190,7 @@ def replay_attitude_aided_11(sequence: Sequence, config: dict, model: torch.nn.M
         for event_time, _, kind, index in sorted(events):
             propagate(event_time)
             if kind == "attitude":
-                continue  # 下一段 propagate 会通过 yaw_source.rate_at 使用新后向差分率。
+                continue  # The next propagation uses the new backward-difference rate through yaw_source.rate_at.
             if kind == "height":
                 result = filter_.update_height(height_measurement(sequence, index),
                                                 float(config["filter"]["height_variance_m2"]),
@@ -236,10 +236,10 @@ def replay_attitude_aided_11(sequence: Sequence, config: dict, model: torch.nn.M
 
 
 def _direct_yaw_at(sequence: Sequence, time: float, offset: float) -> float:
-    """严格因果零阶保持的 IMU 解算 yaw；offset 仅表示离线 benchmark 世界系重锚。"""
+    """Strictly causal zero-order hold of IMU-solved yaw; offset only re-anchors the offline benchmark frame."""
     index = int(np.searchsorted(sequence.attitude_ts, float(time), side="right") - 1)
     if index < 0:
-        raise ValueError("当前时刻之前没有可用 IMU yaw")
+        raise ValueError("No IMU yaw is available at or before the current time")
     return float(sequence.attitude_rpy[index, 2] + offset)
 
 
@@ -252,14 +252,14 @@ def replay_direct_imu_yaw_9(sequence: Sequence, config: dict, model: torch.nn.Mo
                             checkpoint: dict[str, Any] | None = None, device: str | torch.device = "cpu",
                             reanchor_yaw: float | None = None, network: NetworkObservations | None = None,
                             reanchor_time: float | None = None, end_time: float | None = None) -> Replay11Output:
-    """9 状态直接 yaw 回放：只融合平均深度和网络 XY 速度，不估计/更新 yaw。"""
+    """9-state direct-yaw replay: fuse mean depth and network XY velocity without estimating/updating yaw."""
     if (model is None) != (checkpoint is None):
-        raise ValueError("model 与 checkpoint 必须同时提供或同时省略")
+        raise ValueError("model and checkpoint must either both be provided or both be omitted")
     imu_ts = sequence.imu_ts
     last = len(imu_ts) - 1 if end_time is None else int(np.searchsorted(imu_ts, float(end_time), side="right") - 1)
-    if last < 1: raise ValueError("回放结束时间早于第二个 IMU 样本")
+    if last < 1: raise ValueError("Replay ends before the second IMU sample")
     if np.any(np.diff(imu_ts) > float(config["debug"]["max_imu_gap_s"])):
-        raise ValueError(f"{sequence.path}: IMU 间隔超过允许上限")
+        raise ValueError(f"{sequence.path}: IMU interval exceeds the allowed limit")
     tilt = causal_tilt(sequence, imu_ts); position, accel_bias, _, startup_source = _startup(sequence, config, tilt)
     filter_ = DirectYawEKF9(config["filter"], float(np.median(np.diff(imu_ts))))
     filter_.initialize(position, accel_bias, _initial_covariance(config, 0.0)[:9, :9])
@@ -323,7 +323,7 @@ def replay_direct_imu_yaw_9(sequence: Sequence, config: dict, model: torch.nn.Mo
 
 def save_replay11(output: Replay11Output, directory: str | Path, *, save_covariance: bool = True,
                   save_event_trace: bool = True, suffix: str = "") -> None:
-    """保存可调试状态、协方差、完整观测日志和 yaw 源健康度。"""
+    """Save states, covariances, complete observation logs, and yaw-source health for debugging."""
     directory = Path(directory); directory.mkdir(parents=True, exist_ok=True)
     header = "time,p_x,p_y,p_z,v_x,v_y,v_z,q_x,q_y,q_z,q_w,b_a_x,b_a_y,b_a_z,yaw,yaw_rate_correction"
     np.savetxt(directory / f"state{suffix}.csv", np.c_[output.ts, output.state], delimiter=",", header=header, comments="")

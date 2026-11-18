@@ -1,4 +1,4 @@
-"""仅构造短小合成 CSV fixture，不读取或更改实机数据。"""
+"""Create small synthetic CSV fixtures without reading or modifying vehicle data."""
 from pathlib import Path
 import csv
 import numpy as np

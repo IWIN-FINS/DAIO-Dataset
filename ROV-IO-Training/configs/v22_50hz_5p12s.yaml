@@ -1,5 +1,5 @@
-# V22：原始 CSV 为 200 Hz；每连续四点取因果均值，构造 50 Hz 网络输入。
-# 256 个输入点对应约 5.12 s 历史。网络预测仍保持 50 Hz。
+# V22: raw CSV is 200 Hz; causal means of four consecutive samples form 50 Hz network input.
+# The 256 input points span about 5.12 s of history; network predictions remain at 50 Hz.
 experiment:
   name: v22_50hz_5p12s_shared_validation
   seed: 42
@@ -9,12 +9,12 @@ experiment:
 
 data:
   source_format: processed_csv_200hz
-  imu_hz: 200.0                 # 兼容旧字段；与 source_sample_hz 相同
-  source_sample_hz: 200.0       # sample_time_s 的固定原始频率
-  network_input_hz: 50.0        # 四点因果均值后的网络输入频率
-  network_hz: 50.0              # 每 20 ms 输出一次速度预测
-  window_samples: 256           # 256 / 50 Hz = 约 5.12 s
-  label_savgol_window_s: 0.50   # 标签仍由 200 Hz 原始 Tag 时间轴构造
+  imu_hz: 200.0                 # Legacy-compatible field; same as source_sample_hz
+  source_sample_hz: 200.0       # Fixed raw sample_time_s frequency
+  network_input_hz: 50.0        # Network input frequency after causal four-sample means
+  network_hz: 50.0              # One velocity prediction every 20 ms
+  window_samples: 256           # 256 / 50 Hz = approximately 5.12 s
+  label_savgol_window_s: 0.50   # Labels still use the raw 200 Hz tag timeline
   label_savgol_polyorder: 3
   preprocessing:
     downsample: consecutive_four_sample_causal_mean_200hz_to_50hz

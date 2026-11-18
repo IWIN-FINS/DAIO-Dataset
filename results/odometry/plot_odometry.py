@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""新 Test 1–4 里程计绘图：修改下面的“用户配置区”，再运行本文件。
+"""Plot Test 1--4 odometry: edit the user configuration section below, then run this file.
 
-依赖：numpy、matplotlib、Pillow；仅在启用额外平滑时需要 scipy。
-默认从本文件所在目录读取 test1_odometry.csv ～ test4_odometry.csv。
-本脚本只读取已有里程计结果，不训练模型、不重新运行滤波、不改写原始 CSV。
+Dependencies: numpy, matplotlib, Pillow; scipy is required only for additional smoothing.
+By default, read test1_odometry.csv through test4_odometry.csv from this file's directory.
+Read existing odometry results without training models, rerunning filters, or rewriting source CSV files.
 """
 
 from pathlib import Path
@@ -18,46 +18,46 @@ import warnings
 import numpy as np
 import matplotlib
 
-matplotlib.use("Agg")  # 无需弹窗即可保存图片，适合直接在终端运行。
+matplotlib.use("Agg")  # Save figures without opening windows, suitable for terminal execution.
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 from PIL import Image
 
-# Windows 终端统一使用 UTF-8，避免中文提示出现乱码。
+# Use UTF-8 consistently in Windows terminals to avoid garbled text.
 for _stream in (sys.stdout, sys.stderr):
     if _stream is not None and hasattr(_stream, "reconfigure"):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
 
-# ======================== 1. 用户配置区：通常只需修改这里 ========================
+# ======================== 1. USER CONFIGURATION: normally edit only this section ========================
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR                       # CSV 所在目录，可改为其他绝对路径。
+DATA_DIR = BASE_DIR                       # CSV directory; may be changed to another absolute path.
 OUTPUT_DIR = BASE_DIR.parents[1] / "outputs" / "odometry_figures"
-TESTS = (1, 2, 3, 4)                      # 例如改成 (1,) 只重画 Test 1。
-DPI = 1200                               # 论文 PNG 清晰度；调试时可暂改为 150。
-SAVE_PDF = False                         # 改为 True 时额外输出矢量 PDF。
+TESTS = (1, 2, 3, 4)                      # For example, use (1,) to redraw Test 1 only.
+DPI = 1200                               # Publication PNG resolution; use 150 temporarily for debugging.
+SAVE_PDF = False                         # Set True to also export vector PDFs.
 
-# 固定画布比例：不使用 bbox_inches='tight'，避免导出后比例发生改变。
-VELOCITY_SIZE = (8.0, 4.0)                # 宽、高，单位英寸；默认宽高比 2:1。
-BOXPLOT_SIZE = (12.0, 3.0)                # 默认宽高比 4:1。
-LEGEND_SIZE = (19.0, 0.9)                 # 独立横向图例，宽度不足时自动扩展。
-BACKGROUND = "white"                     # 图片背景色。
-LEGEND_TRANSPARENT = False               # 图例是否使用透明背景。
+# Keep the canvas aspect ratio fixed; do not use bbox_inches='tight', which changes exported dimensions.
+VELOCITY_SIZE = (8.0, 4.0)                # Width and height in inches; default aspect ratio 2:1.
+BOXPLOT_SIZE = (12.0, 3.0)                # Default aspect ratio 4:1.
+LEGEND_SIZE = (19.0, 0.9)                 # Standalone horizontal legend; expands if more width is needed.
+BACKGROUND = "white"                     # Figure background color.
+LEGEND_TRANSPARENT = False               # Whether the legend uses a transparent background.
 
-# 字体建议：英文论文用 DejaVu Sans；中文标签可改为 Microsoft YaHei。
+# Use DejaVu Sans for English publications; Microsoft YaHei supports Chinese labels if needed.
 FONT_FAMILY = "DejaVu Sans"
 FONT_SIZE = {
     "base": 20,
     "axis_label": 24,
     "tick": 20,
     "title": 25,
-    "legend": 30,                       # 原字号 20 的 1.5 倍。
+    "legend": 30,                       # 1.5 times the original font size of 20.
 }
 
-# 键名必须与 CSV 的列名前缀一致；label、color、linestyle 等可自由修改。
-# Ground Truth 在最上层绘制，线稍细；各方法均为实线，通过颜色区分。
-# 以下曲线线宽已在上一版基础上加倍。
+# Keys must match CSV column prefixes; label, color, linestyle, etc. are customizable.
+# Draw Ground Truth on top with slightly thinner lines; methods use solid lines distinguished by color.
+# Curve widths below are twice those in the previous version.
 SERIES = {
     "ground_truth": {
         "label": "Ground Truth", "color": "#263746",
@@ -72,7 +72,7 @@ SERIES = {
         "linestyle": "-", "linewidth": 3.8, "alpha": 0.95, "zorder": 3,
     },
     "AirIO": {
-        # 当前为通过验证资格检查的三维 AirIO，来源见 source_provenance.json。
+        # Current AirIO results are from the qualified 3D model; see source_provenance.json.
         "label": "AirIO", "color": "#0072B2",
         "linestyle": "-", "linewidth": 3.6, "alpha": 0.95, "zorder": 2,
     },
@@ -82,28 +82,28 @@ SERIES = {
     },
 }
 
-# 同时控制折线、箱线与图例的显示顺序；从这里移除某键即可隐藏该方法。
+# Controls curve, boxplot, and legend order; remove a key here to hide a method.
 METHODS = ("DAIO", "DEEPVL", "AirIO", "DAIO_withoutRPM")
 LEGEND_ORDER = ("ground_truth", *METHODS)
-LEGEND_HANDLE_LENGTH = 2.5                # 图例中线段长度。
-LEGEND_COLUMN_SPACING = 1.8               # 相邻图例项的水平间距。
-LEGEND_LABEL_SPACING = 0.8                # 线段与文字之间的距离。
-LEGEND_MIN_LINE_WIDTH = 5.0              # 图例线宽：上一版 2.5 的两倍。
+LEGEND_HANDLE_LENGTH = 2.5                # Legend line-segment length.
+LEGEND_COLUMN_SPACING = 1.8               # Horizontal spacing between legend entries.
+LEGEND_LABEL_SPACING = 0.8                # Spacing between line segments and text.
+LEGEND_MIN_LINE_WIDTH = 5.0              # Legend line width: twice the previous 2.5.
 
-# 折线的横轴：默认减去初始化的 8 秒，即评分起点显示为 0。
+# Curve time axis: subtract the 8 s initialization by default so scoring starts at zero.
 TIME_ZERO_AFTER_INITIALIZATION = True
-# 每张图使用的数据范围，单位是“初始化结束后的秒数”；含起止端点。
-# Test 1 的 0～52 s 对应原记录的 8～60 s；未列出的测试使用完整评分段。
-# 此裁剪同时作用于该 Test 的折线图和箱线图，原始 CSV 不改写。
+# Per-figure data ranges in seconds after initialization, including both endpoints.
+# Test 1 at 0--52 s corresponds to original record time 8--60 s; unlisted tests use the full scoring interval.
+# Cropping applies to both curves and boxplots for the test; source CSV files are unchanged.
 TEST_TIME_RANGES = {1: (0.0, 52.0)}
 X_LABEL = "Time(s)"
 VELOCITY_Y_LABELS = (r"$v_x$" + "\n[m/s]", r"$v_y$" + "\n[m/s]")
 TITLE_FORMAT = "Test {test}"
 SHOW_TITLES = True
-TITLE_LOCATION = "left"                  # 可选 left / center / right。
+TITLE_LOCATION = "left"                  # Options: left / center / right.
 
-# None 表示依据完整原始数据自动留白；也可手动指定元组，例如 (-0.4, 0.6)。
-# 如只想调整某张图：VELOCITY_Y_LIMITS = {1: ((-0.4, 0.6), (-0.25, 0.25))}
+# None selects automatic padding from all raw samples; alternatively specify a tuple such as (-0.4, 0.6).
+# To adjust one figure only: VELOCITY_Y_LIMITS = {1: ((-0.4, 0.6), (-0.25, 0.25))}
 VELOCITY_Y_LIMITS = {}
 VELOCITY_Y_MARGIN = 0.08
 MAX_Y_TICKS = 4
@@ -113,45 +113,45 @@ GRID_WIDTH = 0.7
 AXIS_WIDTH = 1.1
 HIDE_TOP_RIGHT_SPINES = True
 
-# 仅对显示折线取点；默认约 10 Hz，并保留每段的极值及首末点。
-# 设置为 None 表示绘制所有 200 Hz 样本。抽样不影响箱线图及指标。
+# Subsample display curves only, at approximately 10 Hz by default, retaining extrema and endpoints per block.
+# None plots all 200 Hz samples. Subsampling does not affect boxplots or metrics.
 DISPLAY_HZ = 10.0
 PRESERVE_DISPLAY_EXTREMA = True
 
-# 所有速度折线的额外显示平滑：0.75 秒、三阶 Savitzky–Golay。
-# 设为 0.0 关闭；适当增大到 1.0 可进一步平滑。仅用于显示，不改 CSV/箱线误差。
-# 裁剪完成后再平滑，所以 Test 1 的 52 秒之后数据不会影响当前图。
+# Additional display smoothing for velocity curves: 0.75 s, third-order Savitzky-Golay.
+# Set 0.0 to disable or increase to 1.0 for more smoothing. Display only; does not change CSV data or boxplot errors.
+# Smooth after cropping so Test 1 data beyond 52 s cannot affect the current figure.
 DISPLAY_SMOOTH_SECONDS = 0.75
 DISPLAY_SMOOTH_POLYORDER = 3
-# 真值可单独设置；None 表示沿用上面的统一时长，0.0 表示真值不额外平滑。
+# Ground truth may be configured separately; None uses the shared duration, 0.0 disables additional smoothing.
 GT_DISPLAY_SMOOTH_SECONDS = None
 
-# 一个箱线图：每个 Test 包含四个方法。默认误差为二维速度误差范数。
-# 可选 xy_norm / vx_abs / vy_abs；三种误差单位均为 m/s。
+# One boxplot includes four methods per test; the default error is the 2D velocity-error norm.
+# Options: xy_norm / vx_abs / vy_abs; all use m/s.
 BOX_ERROR = "xy_norm"
-BOX_Y_LIMITS = None                       # 如需固定范围可改为 (0, 0.15)。
-BOX_SHOW_OUTLIERS = True                  # 默认显示所有离群点，不截掉失败数据。
-BOX_WHISKERS = 1.5                        # 须长，单位 IQR；设为 (0,100) 则须到最小/最大。
+BOX_Y_LIMITS = None                       # For a fixed range, use e.g. (0, 0.15).
+BOX_SHOW_OUTLIERS = True                  # Show all outliers by default without hiding failures.
+BOX_WHISKERS = 1.5                        # Whisker length in IQR; (0,100) extends to min/max.
 BOX_FILL_ALPHA = 0.65
 BOX_WIDTH = 0.15
 BOX_METHOD_SPACING = 0.20
 BOX_OUTLIER_SIZE = 0.9
 BOX_OUTLIER_ALPHA = 0.15
 BOX_MEDIAN_COLOR = "#263746"
-BOX_MEDIAN_WIDTH = 3.4                    # 箱线图中位数线宽加倍。
-BOX_EDGE_WIDTH = 2.0                     # 箱体、须和端帽线宽加倍。
+BOX_MEDIAN_WIDTH = 3.4                    # Doubled boxplot median-line width.
+BOX_EDGE_WIDTH = 2.0                     # Doubled box, whisker, and cap widths.
 BOX_Y_LABELS = {
     "xy_norm": r"$\|e_v^{XY}\|_2$ [m/s]",
     "vx_abs": r"$|e_{v_x}|$ [m/s]",
     "vy_abs": r"$|e_{v_y}|$ [m/s]",
 }
 
-MAKE_PREVIEW = True                       # 另生成低分辨率总览，方便快速检查。
-# ======================== 用户配置区结束，以下为绘图实现 =======================
+MAKE_PREVIEW = True                       # Also generate a low-resolution overview for quick inspection.
+# ======================== END USER CONFIGURATION; plotting implementation below =======================
 
 
 def file_sha256(path):
-    """记录输入与输出文件哈希，便于确认图片用了哪一版数据。"""
+    """Record input/output hashes to identify the exact data version used for each figure."""
     digest = hashlib.sha256()
     with Path(path).open("rb") as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
@@ -160,20 +160,20 @@ def file_sha256(path):
 
 
 def read_trial(test):
-    """按列名读取，避免依赖列的位置；检查 200 Hz 和数值有效性。"""
+    """Read by column name rather than position; validate 200 Hz sampling and numeric values."""
     path = DATA_DIR / f"test{test}_odometry.csv"
     with path.open(encoding="utf-8-sig", newline="") as handle:
         names = next(csv.reader(handle))
     values = np.loadtxt(path, delimiter=",", skiprows=1, encoding="utf-8-sig", ndmin=2)
     if values.shape[1] != len(names) or not np.isfinite(values).all():
-        raise ValueError(f"Test {test} 的 CSV 列数不一致，或包含 NaN/Inf。")
+        raise ValueError(f"Test {test} CSV has inconsistent column counts or contains NaN/Inf.")
     columns = dict(zip(names, values.T))
     required = ["time_s", "time_after_initialization_s"]
     for key in ("ground_truth", *METHODS):
         required.extend(f"{key}_{axis}_mps" for axis in ("vx", "vy"))
     missing = [name for name in required if name not in columns]
     if missing:
-        raise ValueError(f"Test {test} 缺少必要列：{missing}")
+        raise ValueError(f"Test {test} is missing required columns: {missing}")
     np.testing.assert_allclose(np.diff(columns["time_s"]), 0.005, rtol=0, atol=1e-9)
     np.testing.assert_allclose(columns["time_after_initialization_s"], columns["time_s"] - 8.0,
                                rtol=0, atol=1e-9)
@@ -182,11 +182,11 @@ def read_trial(test):
     if test in TEST_TIME_RANGES:
         start, end = TEST_TIME_RANGES[test]
         if start > end:
-            raise ValueError(f"Test {test} 的裁剪起点不能大于终点。")
+            raise ValueError(f"Test {test} crop start must not exceed its end.")
         relative_time = columns["time_after_initialization_s"]
         selected = (relative_time >= start - 1e-9) & (relative_time <= end + 1e-9)
     if selected.sum() < 5:
-        raise ValueError(f"Test {test} 裁剪后样本不足，请检查 TEST_TIME_RANGES。")
+        raise ValueError(f"Test {test} has too few samples after cropping; check TEST_TIME_RANGES.")
     velocity = {
         key: np.column_stack([columns[f"{key}_{axis}_mps"][selected] for axis in ("vx", "vy")])
         for key in ("ground_truth", *METHODS)
@@ -198,11 +198,11 @@ def read_trial(test):
 
 
 def display_indices(time, values):
-    """均匀抽样，并保留每个显示块内的峰值，避免漏画短时尖峰。"""
+    """Subsample uniformly while retaining per-block peaks to preserve short spikes."""
     if DISPLAY_HZ is None:
         return np.arange(len(time))
     if DISPLAY_HZ <= 0:
-        raise ValueError("DISPLAY_HZ 必须为正数或 None。")
+        raise ValueError("DISPLAY_HZ must be positive or None.")
     raw_dt = float(np.median(np.diff(time)))
     step = max(1, int(round(1 / (DISPLAY_HZ * raw_dt))))
     selected = [*range(0, len(time), step), len(time) - 1]
@@ -214,7 +214,7 @@ def display_indices(time, values):
 
 
 def smooth_for_display(time, velocity, seconds):
-    """仅平滑用于显示的新数组；箱线图始终读取未经该平滑处理的 velocity。"""
+    """Smooth only a new display array; boxplots always use velocity before this smoothing."""
     if seconds <= 0:
         return velocity
     from scipy.signal import savgol_filter
@@ -224,7 +224,7 @@ def smooth_for_display(time, velocity, seconds):
     width = width if width % 2 else width + 1
     width = min(width, len(time) if len(time) % 2 else len(time) - 1)
     if width <= DISPLAY_SMOOTH_POLYORDER:
-        raise ValueError("平滑窗口内样本不足以拟合指定阶数。")
+        raise ValueError("Too few samples in the smoothing window for the requested polynomial order.")
     return savgol_filter(velocity, width, DISPLAY_SMOOTH_POLYORDER, axis=0, mode="interp")
 
 
@@ -242,8 +242,8 @@ def configure_style():
 
 
 def save_figure(fig, name, transparent=False):
-    """固定尺寸保存；先检查文字边界，再用临时文件替换，防止图片写到一半。"""
-    # 以较低的画布 DPI 进行排版检查，正式保存时使用用户指定的 1200 DPI。
+    """Save at fixed dimensions; check text bounds and replace through a temporary file to avoid partial writes."""
+    # Check layout at lower canvas DPI, then save at the configured publication resolution (default 1200 DPI).
     fig.canvas.draw()
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
@@ -252,7 +252,7 @@ def save_figure(fig, name, transparent=False):
     if bounds is not None and (bounds.x0 < -0.015 or bounds.y0 < -0.015 or
                                bounds.x1 > width + 0.015 or bounds.y1 > height + 0.015):
         plt.close(fig)
-        raise ValueError(f"{name} 的文字超出画布，请适度减小字号或增加图尺寸。")
+        raise ValueError(f"Text in {name} extends beyond the canvas; reduce font size or enlarge the figure.")
     path = OUTPUT_DIR / name
     handle, temporary = tempfile.mkstemp(prefix=path.stem + "_", suffix=".tmp", dir=OUTPUT_DIR)
     os.close(handle)
@@ -266,7 +266,7 @@ def save_figure(fig, name, transparent=False):
         fig.savefig(path.with_suffix(".pdf"), format="pdf", transparent=transparent,
                     facecolor="none" if transparent else BACKGROUND)
     plt.close(fig)
-    print(f"已保存：{path.name}", flush=True)
+    print(f"Saved: {path.name}", flush=True)
     return path
 
 
@@ -291,8 +291,8 @@ def plot_velocity(trial):
         ax.set_xlim(float(time[0]), float(time[-1]))
         limits = VELOCITY_Y_LIMITS.get(trial["test"], (None, None))[component]
         if limits is None:
-            # 自动坐标使用所有原始样本，而不是抽样值，默认不会悄悄隐藏峰值。
-            # 同时包含原始与显示数据的范围，避免平滑端部拟合超出坐标范围。
+            # Automatic axes use all raw samples, not subsampled values, so peaks are not silently hidden.
+            # Include both raw and displayed ranges to contain smoothing overshoot near the endpoints.
             values = np.concatenate([v[:, component] for v in
                                      [*trial["velocity"].values(), *display_velocity.values()]])
             span = max(float(np.ptp(values)), 0.05)
@@ -312,7 +312,7 @@ def plot_velocity(trial):
 
 
 def error_values(trial, method):
-    """箱线图始终使用全量误差，不使用显示平滑或显示抽样结果。"""
+    """Boxplots always use all errors, without display smoothing or subsampling."""
     error = trial["velocity"][method] - trial["velocity"]["ground_truth"]
     if BOX_ERROR == "xy_norm":
         return np.linalg.norm(error, axis=1)
@@ -320,7 +320,7 @@ def error_values(trial, method):
         return np.abs(error[:, 0])
     if BOX_ERROR == "vy_abs":
         return np.abs(error[:, 1])
-    raise ValueError("BOX_ERROR 只能为 xy_norm / vx_abs / vy_abs。")
+    raise ValueError("BOX_ERROR must be xy_norm / vx_abs / vy_abs.")
 
 
 def plot_boxplot(trials):
@@ -363,7 +363,7 @@ def plot_boxplot(trials):
 
 
 def plot_legend():
-    """单行排列，顺序同配置区；用户增加文字/字号时自动扩展画布以防裁切。"""
+    """Arrange one row in configured order; expand the canvas for longer text or larger fonts to prevent clipping."""
     handles = [Line2D([], [], color=SERIES[key]["color"], linestyle=SERIES[key]["linestyle"],
                       linewidth=max(LEGEND_MIN_LINE_WIDTH, SERIES[key]["linewidth"]), label=SERIES[key]["label"])
                for key in LEGEND_ORDER if key == "ground_truth" or key in METHODS]
@@ -379,10 +379,10 @@ def plot_legend():
 
 
 def make_preview(files):
-    """将正式图片缩小成预览，不能代替 1200 dpi 原图用于论文排版。"""
+    """Downscale publication figures for preview; use the original 1200 DPI images for paper layout."""
     Image.MAX_IMAGE_PIXELS = None
     width = 1200
-    # 四张折线图按 2×2 排列，下面依次放箱线图和横向图例。
+    # Arrange four curve figures in a 2x2 grid, followed by the boxplot and horizontal legend.
     rows = int(np.ceil(len(TESTS) / 2))
     preview = Image.new("RGB", (width * 2, rows * 600 + 600 + 130), "white")
     for i, path in enumerate(files[:len(TESTS)]):
@@ -395,7 +395,7 @@ def make_preview(files):
         image = image.convert("RGB")
         image.thumbnail((2350, 120), Image.Resampling.LANCZOS)
         preview.paste(image, ((2400 - image.width) // 2, rows * 600 + 605))
-    # 先写临时文件再替换，避免预览被图片查看器占用时直接写入失败。
+    # Write a temporary file first, then replace to handle previews open in an image viewer.
     handle, temporary = tempfile.mkstemp(prefix="preview_", suffix=".tmp", dir=OUTPUT_DIR)
     os.close(handle)
     try:
@@ -408,13 +408,13 @@ def make_preview(files):
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     if not METHODS or len(set(METHODS)) != len(METHODS):
-        raise ValueError("METHODS 不能为空或重复。")
-    # 从本目录的来源文件读取版本，避免替换数据后仍显示旧版状态。
+        raise ValueError("METHODS must be nonempty and contain no duplicates.")
+    # Read the version from the local provenance file so replaced data does not retain stale status text.
     provenance_path = DATA_DIR / "source_provenance.json"
     provenance = json.loads(provenance_path.read_text(encoding="utf-8-sig")) if provenance_path.exists() else {}
     airio_info = provenance.get("models", {}).get("AirIO", {})
     if "AirIO" in METHODS and airio_info.get("diagnostic_only", False):
-        warnings.warn("当前 AirIO 来源标为诊断结果，具体状态见 source_provenance.json。", stacklevel=1)
+        warnings.warn("Current AirIO provenance is marked diagnostic; see source_provenance.json for details.", stacklevel=1)
     configure_style()
     trials = [read_trial(test) for test in TESTS]
     files = [plot_velocity(trial) for trial in trials]
@@ -424,14 +424,14 @@ def main():
         writer = csv.DictWriter(handle, fieldnames=list(stats[0]))
         writer.writeheader()
         writer.writerows(stats)
-    # 在导出后核对实际像素和 DPI；PNG 画幅以英寸尺寸×DPI 为准。
+    # Verify exported pixel dimensions and DPI; PNG dimensions follow size in inches × DPI.
     Image.MAX_IMAGE_PIXELS = None
     inventory = []
     for path in files:
         with Image.open(path) as image:
             dpi = image.info.get("dpi")
             if dpi is None or abs(dpi[0] - DPI) > 0.1:
-                raise ValueError(f"{path.name} 的导出 DPI 不正确。")
+                raise ValueError(f"Exported DPI is incorrect for {path.name}.")
             if path.name.startswith("test"):
                 expected = tuple(round(x * DPI) for x in VELOCITY_SIZE)
                 assert image.size == expected, (path.name, image.size, expected)
@@ -462,7 +462,7 @@ def main():
     (OUTPUT_DIR / "plot_validation.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     if MAKE_PREVIEW:
         make_preview(files)
-    print(f"完成：{len(files)} 张正式 PNG 已保存至 {OUTPUT_DIR}", flush=True)
+    print(f"Completed: {len(files)} publication PNGs saved to {OUTPUT_DIR}", flush=True)
 
 
 if __name__ == "__main__":

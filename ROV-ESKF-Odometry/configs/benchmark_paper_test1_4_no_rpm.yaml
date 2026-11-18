@@ -1,6 +1,6 @@
-# 当前论文消融实验的无 RPM 输入三分支模型在独立 Test 1--4 副本上的 ESKF benchmark。
-# 0--8 s 连续预热并积累 7.68 s 网络历史；从 8 s 开始计分，并只在该时刻
-# 使用一次 AprilTag yaw 重锚。运行时回放核心不读取 AprilTag。
+# ESKF benchmark of the three-branch ablation model without RPM on separate copies of Test 1--4.
+# Warm up continuously over 0--8 s to accumulate 7.68 s of network history; start scoring at 8 s,
+# with a single AprilTag yaw re-anchor at that instant. The runtime replay core does not read AprilTag.
 data:
   root: "../../dataset"
   manifest: "../../ROV-IO-Training/manifests/v24_val26_27_demo4.yaml"
@@ -44,7 +44,7 @@ filter:
   yaw_rate_source_psd_rad2_per_s: 8.3e-7
   yaw_rate_correction_rw_psd_rad2_per_s3: 3.34e-6
   yaw_rate_source:
-    # CSV yaw 已为多圈弧度；使用严格因果后向差分得到 Euler yaw-rate。
+    # CSV yaw is already in multi-turn radians; use strictly causal backward differences for Euler yaw-rate.
     type: solved_yaw_backward_difference
     backward_window_s: 0.05
     median_filter_samples: 5

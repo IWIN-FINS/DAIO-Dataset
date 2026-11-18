@@ -1,5 +1,5 @@
-# data-root 是 dataset；这里所有路径相对于 data-root/processed。
-# val 与 demo 明确共享，因此 best.pt 的选择结果不能称为盲测性能。
+# data-root is dataset; all paths here are relative to data-root/processed.
+# val and demo explicitly share records, so best.pt selection results are not blind-test performance.
 schema_version: 3
 data_format: processed_csv_200hz
 coordinate_frame: "FLU; +x forward, +y left, +z upward"

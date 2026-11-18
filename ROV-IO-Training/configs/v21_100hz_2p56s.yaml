@@ -1,5 +1,5 @@
-# V21：原始 processed CSV 保持 200 Hz；网络输入以两点因果均值降到 100 Hz。
-# 256 个输入点因此覆盖约 2.56 s，输出仍为 50 Hz，兼容深度/ESKF 更新频率。
+# V21: retain raw processed CSV at 200 Hz; use causal two-sample means for 100 Hz network input.
+# The 256 input points span about 2.56 s; outputs remain at 50 Hz for depth/ESKF compatibility.
 experiment:
   name: v21_100hz_2p56s_shared_validation
   seed: 42
@@ -9,12 +9,12 @@ experiment:
 
 data:
   source_format: processed_csv_200hz
-  imu_hz: 200.0                 # 兼容旧字段；与 source_sample_hz 相同
-  source_sample_hz: 200.0       # sample_time_s 的固定原始频率
-  network_input_hz: 100.0       # 两点因果均值后的网络输入频率
-  network_hz: 50.0              # 每 20 ms 预测一次，不变
-  window_samples: 256           # 256 / 100 Hz = 约 2.56 s
-  label_savgol_window_s: 0.50   # 标签始终在 200 Hz 原始时间轴上平滑
+  imu_hz: 200.0                 # Legacy-compatible field; same as source_sample_hz
+  source_sample_hz: 200.0       # Fixed raw sample_time_s frequency
+  network_input_hz: 100.0       # Network input frequency after causal two-sample means
+  network_hz: 50.0              # Unchanged: one prediction every 20 ms
+  window_samples: 256           # 256 / 100 Hz = approximately 2.56 s
+  label_savgol_window_s: 0.50   # Always smooth labels on the raw 200 Hz timeline
   label_savgol_polyorder: 3
   preprocessing:
     downsample: consecutive_two_sample_causal_mean_200hz_to_100hz

@@ -1,54 +1,101 @@
-# DAIO：最新数据集、网络训练与里程计代码
+# DAIO Dataset
 
-本资料包只包含最新的、有 AprilTag 参考的新 V1/V2 **处理后数据**。不包含旧数据集、原始采集 CSV、无人机视频、环境安装目录、逐轮训练断点或缓存。开放水域 V5 演示没有同等级的独立定位参考，不混入本论文训练/测试划分。
+Processed underwater ROV data, pretrained models, and code for network training and odometry evaluation.
 
-## 数据与文件
-
-| 内容 | 位置 |
-|---|---|
-| 55 段处理后 CSV、清洗审计、修复与源行映射 | `new-dataset/processed/` |
-| 49 训练 / 2 验证 / 4 测试划分 | `new-dataset/processed/split.yaml`、`datasets.csv` |
-| DAIO、无 RPM、六轴 IMU、推进器指令训练入口 | `ROV-IO-Ablation/experiments/new_v1v2/` |
-| 网络、损失、数据窗口与训练器 | `ROV-IO-Ablation/src/rovio_ablation/` |
-| 11 状态 ESKF、网络观测、离线回放 | `ROV-ESKF-Odometry/src/rov_eskf/` |
-| 模型及训练来源 | `models/`、`models/index.csv` |
-| AirIO / AirIMU 与 DeepVL 适配代码 | `new-dataset/airio_3d*`、`new-dataset/deepvl/`、`new-dataset/baselines/` |
-| 论文四方法逐样本结果及绘图代码 | `results/odometry/` |
-| 第三方来源和许可证 | `THIRD_PARTY.md` |
-
-验证轨迹为 V2 026、027；Test 1–4 对应 025、028、029、030。划分文件中的 `demo` 即测试集。54 条源记录产生 55 个连续段，其中 V2 019 长中断切成两段；短段保留但不构造不足长度的网络窗口。三集合无源记录交叉。
-
-采样时间 `sample_time_s` 步长 0.005 s（200 Hz）；`pressure` 已是深度米值。IMU 加速度单位 m/s²，角速度和姿态为 rad/s、rad，RPM 为有符号转速，指令为有符号 throttle。完整字段包含六轴 IMU、roll/pitch/yaw、8 路 RPM、8 路指令、电压、AprilTag XY/yaw 和原时间字段。AprilTag 仅用于离线监督/评估。DAIO 不输入电压、指令或 AprilTag；DeepVL 的输入不同，详见其配置。
-
-## 安装与完整性检查
-
-推荐 Python 3.10。在包根目录运行；训练需要 PyTorch CUDA 环境，CPU 可用于回放检查。
+## 1. Download and Install
 
 ```sh
+git clone https://github.com/IWIN-FINS/DAIO-Dataset.git
+cd DAIO-Dataset
 python -m pip install -r requirements.txt
 python verify_release.py
 ```
 
-`SHA256SUMS` 覆盖发布文件；数据与模型另有逐文件索引。模型为本项目可信来源的 PyTorch checkpoint，包含归一化和配置；不要用这些加载入口读取来源不明的 pickle 权重。
+Use Python 3.10 and a CUDA-enabled PyTorch environment for training. Use `--device cpu` for CPU evaluation or `--device cuda` for GPU evaluation. Run the commands below from the repository root.
 
-## 仅使用最新数据训练
+## 2. Use the Dataset
 
-下列命令从头训练，默认 seed 42、80 轮；前 40 轮 Huber，随后加入不确定度损失。原始 200 Hz 每 6 点因果均值，256 个网络输入点、约 7.68 s 历史，50 Hz 预测。归一化由训练集计算，验证指标用于选模。此次整理没有启动正式训练。
+Load the processed CSV files from `new-dataset/processed/v1/` and `new-dataset/processed/v2/`. Follow the split in `new-dataset/processed/split.yaml`; `datasets.csv` provides a per-file index.
+
+| Split | Segments | Records |
+|---|---:|---|
+| Training | 49 | Listed under `train` |
+| Validation | 2 | V2 026, 027 |
+| Test (`demo`) | 4 | Test 1--4: V2 025, 028, 029, 030 |
+
+Use `sample_time_s` as the 200 Hz timeline. Read acceleration in m/s², angular velocity in rad/s, and attitude in radians. The `pressure` field is already depth in meters. RPM and throttle commands are signed values. Use AprilTag XY/yaw for offline labels and evaluation. Fit normalization statistics on the training split and use the validation split for checkpoint selection.
+
+## 3. Evaluate the Released Models
+
+Run network evaluation for a selected model and test trajectory:
 
 ```sh
-# DAIO：水平 IMU + RPM + 深度
+python evaluate_network.py --model new/horizontal_rpm --test 1
+python evaluate_network.py --model new/full_imu_rpm --test 1
+python evaluate_network.py --model new/horizontal_command --test 1
+```
+
+Run odometry replay:
+
+```sh
+python replay.py --method daio --test 1
+python replay.py --method no_rpm --test 1
+python replay.py --method deepvl --test 1
+python replay.py --method airio --test 1
+```
+
+Repeat with `--test 2`, `--test 3`, and `--test 4`. Network outputs are written to `outputs/network/`; replay CSV files are written to `outputs/`. Use `--output PATH` to choose another destination.
+
+Select checkpoints as follows:
+
+| Task | Checkpoint |
+|---|---|
+| DAIO trained on the released V1/V2 data; default DAIO replay | `models/new/horizontal_rpm.pt` |
+| Six-axis IMU + RPM network | `models/new/full_imu_rpm.pt` |
+| Horizontal IMU + command network | `models/new/horizontal_command.pt` |
+| Paper DAIO replay; joint legacy + V1/V2 training | `models/combined/daio.pt` |
+| Paper no-RPM replay; joint legacy + V1/V2 training; default no-RPM replay | `models/combined/no_rpm.pt` |
+| DeepVL | `models/deepvl/ensemble.pt` |
+| AirIO / AirIMU | `models/airio/airio.pt`, `models/airio/airimu.pt` |
+
+To reproduce the paper's DAIO replay, select its checkpoint explicitly:
+
+```sh
+python replay.py --method daio --test 1 --checkpoint models/combined/daio.pt
+```
+
+Use `models/index.csv` for checkpoint identifiers and training-data provenance. For a no-RPM comparison trained only on the released data, train the no-RPM configuration below and pass its `best.pt` using `--checkpoint`.
+
+## 4. Train on the Released Data
+
+Validate the dataset, then train the desired configuration:
+
+```sh
 python ROV-IO-Ablation/experiments/new_v1v2/horizontal_rpm/train.py validate
+
+# DAIO: horizontal IMU + RPM + depth
 python ROV-IO-Ablation/experiments/new_v1v2/horizontal_rpm/train.py train --seed 42
 
-# DAIO without RPM：水平 IMU + 深度
+# No RPM: horizontal IMU + depth
 python ROV-IO-Ablation/experiments/new_v1v2/no_rpm/train.py train --seed 42
 
-# 输入消融
+# Input ablations
 python ROV-IO-Ablation/experiments/new_v1v2/full_imu_rpm/train.py train --seed 42
 python ROV-IO-Ablation/experiments/new_v1v2/horizontal_command/train.py train --seed 42
 ```
 
-各实验 `runs/` 保存配置、日志、最佳权重、断点和自动测试结果。恢复命令为对应入口的 `resume --run-dir PATH`；评估为 `evaluate --run-dir PATH --split demo`。先执行对应入口 `--help` 查看参数。
+Keep the supplied configuration for the default 80-epoch schedule: 40 Huber-only epochs followed by Huber plus uncertainty loss. The model uses 256 causal input points spanning approximately 7.68 s and predicts at 50 Hz. Training outputs are saved under each experiment's `runs/` directory.
+
+Resume or evaluate a run using the same experiment entry point:
+
+```sh
+python ROV-IO-Ablation/experiments/new_v1v2/horizontal_rpm/train.py resume --run-dir PATH_TO_RUN
+python ROV-IO-Ablation/experiments/new_v1v2/horizontal_rpm/train.py evaluate --run-dir PATH_TO_RUN --split demo
+python replay.py --method daio --test 1 --checkpoint PATH_TO_RUN/best.pt
+python replay.py --method no_rpm --test 1 --checkpoint PATH_TO_NO_RPM_RUN/best.pt
+```
+
+Train the comparison methods with:
 
 ```sh
 python new-dataset/deepvl/prepare.py
@@ -58,31 +105,33 @@ python new-dataset/airio_3d/train.py airimu
 python train_airio.py
 ```
 
-`train_airio.py` 默认使用随包冻结 AirIMU；要改用重训权重，传入 `--airimu PATH`。三维参考采用 AprilTag XY/yaw、压力计 Z 和 IMU 解算 roll/pitch，不能表述为完全独立的三维动捕真值。
+`train_airio.py` uses the released AirIMU checkpoint by default. Pass `--airimu PATH_TO_AIRIMU_CHECKPOINT` to use your trained AirIMU model. Use `--help` on each command-line entry point to inspect its options.
 
-## 网络与里程计评估
+## 5. Compare Results and Draw Figures
+
+Use the supplied replay protocol: process each record from its start, warm up for 8 s, align coordinates once at the scoring start, and score the remaining trajectory. Replay CSV files include reference and predicted XY position, XY velocity, and yaw.
+
+Use `results/odometry/test1_odometry.csv` through `test4_odometry.csv` and `odometry_metrics_updated.csv` for the archived paper comparison. Regenerate its figures with:
 
 ```sh
-python evaluate_network.py --model new/horizontal_rpm --test 1
-python evaluate_network.py --model new/full_imu_rpm --test 1
-python replay.py --method daio --test 1
-python replay.py --method deepvl --test 1
-python replay.py --method airio --test 1
-python replay.py --method no_rpm --test 1
+python results/odometry/plot_odometry.py
 ```
 
-`--test` 为 1–4，`--device` 为 cpu 或 cuda。结果写入 `outputs/`。从记录起点连续回放，前 8 秒预热，评分起点一次坐标对齐，后续不使用持续定位真值更新。回放 CSV 包括参考及预测的世界系 XY 位置、速度和 yaw。
+Edit the script's `USER CONFIGURATION` section to select tests, display ranges, and figure sizes. Figures are saved to `outputs/odometry_figures/`.
 
-**权重来源必须区分：**
+## Repository Layout
 
-- 默认 `--method daio` 使用 `models/new/horizontal_rpm.pt`，仅在最新数据训练。
-- `models/new/` 三组、AirIO/AirIMU、DeepVL 均来自新数据训练。
-- `models/combined/daio.pt` 与 `models/combined/no_rpm.pt` 是论文历史联合训练权重，使用过旧＋新训练集。旧数据不随本包提供，无法仅靠本包复现这两个权重的联合训练过程。
-- 目前随包没有经过确认的“新数据单独训练”的 no-RPM 权重。默认 `--method no_rpm` 明确使用上述历史联合权重。要进行严格新数据训练对比，先运行新增 no-RPM 训练入口，再执行 `python replay.py --method no_rpm --test 1 --checkpoint PATH_TO_BEST_PT`。
-- 若复现论文联合 DAIO 回放，显式执行 `python replay.py --method daio --test 1 --checkpoint models/combined/daio.pt`。
+| Path | Use |
+|---|---|
+| `new-dataset/processed/` | Dataset, split, and preprocessing metadata |
+| `ROV-IO-Ablation/experiments/new_v1v2/` | Current training entry points |
+| `ROV-IO-Ablation/src/rovio_ablation/` | Models, features, losses, and training engine |
+| `ROV-ESKF-Odometry/src/rov_eskf/` | ESKF and replay implementation |
+| `models/` | Released checkpoints and index |
+| `new-dataset/airio_3d*/`, `new-dataset/deepvl/`, `new-dataset/baselines/` | Comparison methods |
+| `results/odometry/` | Paper results and plotting script |
+| `SHA256SUMS`, `verify_release.py` | Release integrity verification |
 
-`results/odometry/` 是论文历史对比的归档结果，其中 DAIO/no-RPM 为联合训练模型；它们不是本包默认新数据 DAIO 的重算结果。`new-dataset/combined_training/` 仅保存这两个历史模型的训练源码供查阅，缺少旧数据时不要启动该入口。`ROV-IO-Training` 保留共享代码/历史格式兼容层；当前训练入口以上述 `new_v1v2` 为准。
+## Licensing
 
-## 发布范围与许可
-
-本次为本地开源资料整理，尚未上传公开仓库。第三方代码保留原许可证。项目自有代码、数据和模型的公开许可证尚需权利人确定，见 `LICENSE_STATUS.md`；没有替你擅自授予 MIT/Apache/CC 等许可。
+Read `LICENSE`, `LICENSE_STATUS.md`, and `THIRD_PARTY.md` before reuse or redistribution. Retain the license notices supplied with third-party components.

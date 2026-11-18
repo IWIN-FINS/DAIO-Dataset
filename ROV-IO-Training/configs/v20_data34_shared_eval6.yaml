@@ -1,5 +1,5 @@
-# data3/data4 的六条共享验证/展示轨迹。它们不属于盲测集：每个 epoch 都用于
-# 选择 best.pt，训练结束后只生成一次带相同数据的展示结果。
+# Six shared validation/demonstration trajectories from data3/data4; these are not blind tests.
+# Use them to select best.pt each epoch and generate demonstration results once after training.
 experiment:
   name: v20_data34_shared_eval6_batch128_dropout0.3_phase1Epochs40
   seed: 42
