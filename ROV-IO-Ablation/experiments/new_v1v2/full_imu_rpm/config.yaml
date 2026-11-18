@@ -1,0 +1,52 @@
+experiment:
+  name: new_v1v2_full_imu_rpm
+  seed: 42
+  device: auto
+  deterministic: false
+  tf32: false
+data:
+  source_format: processed_csv_200hz
+  imu_hz: 200.0
+  source_sample_hz: 200.0
+  network_input_hz: 33.333333333333336
+  network_hz: 50.0
+  window_samples: 256
+  label_savgol_window_s: 0.5
+  label_savgol_polyorder: 3
+  preprocessing:
+    downsample: consecutive_six_sample_causal_mean_200hz_to_33p33hz
+    rpm: signed_rpm_causal_mean_then_divide_1000_no_centering
+    depth: direct_physical_depth_m_causal_mean_then_global_train_zscore
+    apriltag_labels: raw_tag_xy_yaw_savgol_0p5s_world_to_body_no_legacy_axis_map
+    accel_xyz: raw_acc_xyz_causal_mean_global_train_zscore
+    gyro_xyz: raw_gyro_xyz_causal_mean_global_train_zscore
+model:
+  name: full_imu_rpm
+  architecture: cnn_transformer
+  modalities:
+  - rpm
+  - accel_xyz
+  - gyro_xyz
+  - depth
+  d_model: 64
+  transformer_layers: 3
+  transformer_heads: 4
+  transformer_ffn_dim: 256
+  dropout: 0.5
+  max_tokens: 160
+training:
+  epochs: 80
+  phase1_epochs: 40
+  batch_size: 128
+  num_workers: 0
+  pin_memory: true
+  lr: 0.001
+  weight_decay: 0.0001
+  grad_clip_norm: 5.0
+  huber_delta: 0.1
+  nll_weight: 0.05
+  log_every_batches: 250
+evaluation:
+  selection_metric: body_xy_rmse
+  evaluate_demo_after_training: true
+  plot_dpi: 150

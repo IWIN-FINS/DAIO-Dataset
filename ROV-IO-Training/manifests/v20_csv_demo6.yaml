@@ -1,0 +1,30 @@
+# data-root 是 dataset；这里所有路径相对于 data-root/processed。
+# val 与 demo 明确共享，因此 best.pt 的选择结果不能称为盲测性能。
+schema_version: 3
+data_format: processed_csv_200hz
+coordinate_frame: "FLU; +x forward, +y left, +z upward"
+offline_apriltag_only: true
+processed_root: processed
+splits:
+  train:
+    glob: "v*/*.csv"
+    exclude_files:
+      - v2/025_demo__segment_001.csv
+      - v2/026_demo__segment_001.csv
+      - v2/027_demo__segment_001.csv
+      - v2/028_demo__segment_001.csv
+      - v2/029_demo__segment_001.csv
+      - v2/030_demo__segment_001.csv
+    expected_count: 76
+  val:
+    files:
+      - v2/025_demo__segment_001.csv
+      - v2/026_demo__segment_001.csv
+      - v2/027_demo__segment_001.csv
+      - v2/028_demo__segment_001.csv
+      - v2/029_demo__segment_001.csv
+      - v2/030_demo__segment_001.csv
+    expected_count: 6
+  demo:
+    alias_of: val
+    expected_count: 6

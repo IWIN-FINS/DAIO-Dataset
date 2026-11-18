@@ -1,0 +1,88 @@
+# 六条 data3/data4 共享验证/展示轨迹的离线 ESKF 回放。
+# 注意：该组记录被用于模型选择，且当前 checkpoint 的部分记录进入过训练集；
+# 本配置只用于诊断与展示，不能作为独立盲测结果。
+# 10 s 时使用一次 AprilTag yaw 重锚，仅限离线 benchmark。
+data:
+  root: "../../ROV-RPM-IMU-Dataset-v1/processed"
+  manifest: "processed_v1.yaml"
+  split: "val"
+  records:
+    # 每条记录可独立裁剪；时间相对其首个 IMU 时间戳，null 表示运行到末尾。
+    - {path: train/data3/ellipse_large.h5, start_s: 10.0, end_s: null}
+    - {path: train/data3/figure_eight.h5, start_s: 10.0, end_s: null}
+    - {path: train/data3/slalom_s_curve.h5, start_s: 10.0, end_s: null}
+    - {path: train/data3/random_smooth_05.h5, start_s: 10.0, end_s: null}
+    - {path: train/data4/noisewalk_c4_10.h5, start_s: 10.0, end_s: null}
+    - {path: evaluation/paper/data4/stochastic_set3_08.h5, start_s: 10.0, end_s: null}
+  imu_hz: 200.0
+  network_hz: 50.0
+  window_samples: 256
+  pressure:
+    atmosphere_pa: 101325.0
+    water_density_kg_m3: 1000.0
+    gravity_mps2: 9.80665
+
+model:
+  checkpoint: "../../ROV-IO-Training/runs/v20_data34_shared_eval6_batch128_dropout0.3_phase1Epochs40/20260827-141057_seed42/best.pt"
+  device: auto
+  batch_size: 128
+
+initialization:
+  startup_s: 10.0
+  position_std_m: 0.5
+  velocity_std_mps: 0.3
+  accel_bias_std_mps2: 0.2
+  yaw_std_rad: 0.13962634
+  yaw_rate_correction_std_radps: 0.05
+
+filter:
+  gravity_flu: [0.0, 0.0, -9.80665]
+  accel_sample_covariance:
+    - [1.508053e-2, 6.003840e-4, 2.773057e-4]
+    - [6.003840e-4, 1.164699e-2, -8.962351e-4]
+    - [2.773057e-4, -8.962351e-4, 1.629901e-2]
+  accel_bias_rw_psd:
+    - [1.028425e-3, 0.0, 0.0]
+    - [0.0, 1.014470e-3, 0.0]
+    - [0.0, 0.0, 5.826577e-4]
+  yaw_rate_source_psd_rad2_per_s: 8.3e-7
+  yaw_rate_correction_rw_psd_rad2_per_s3: 3.34e-6
+  # 姿态包时间戳偶有异常短间隔；固定 50 ms 后向差分避免量化噪声被放大。
+  # 1.0 rad/s 高于当前数据的真实偏航范围，作为只拦截异常尖峰的物理保护。
+  yaw_rate_source:
+    backward_window_s: 0.05
+    median_filter_samples: 5
+    max_abs_rate_radps: 1.0
+  height_variance_m2: 5.110808e-5
+  depth_nis_gate_1d: 6.63
+  velocity_nis_gate_2d: 16
+  yaw_rate_nis_gate_1d: 6.63
+  network:
+    xy:
+      covariance_scale: 1.0
+      min_std: 0.005
+      max_std: 2.0
+      max_step_mps: 0.10
+    yaw_rate:
+      variance_scale: 9.0
+      min_std: 0.005
+      max_std: 2.0
+
+benchmark:
+  yaw_reanchor_std_rad: 0.035
+
+evaluation:
+  mode: benchmark_apriltag_init
+  reference_savgol_window: 15
+  reference_savgol_polyorder: 3
+  plot_dpi: 150
+
+debug:
+  max_imu_gap_s: 0.0125
+  save_event_trace: true
+  save_covariance: true
+  save_plots: true
+
+output:
+  root: "../runs"
+  run_name: "benchmark_v20_data34_shared_eval6_nonblind"

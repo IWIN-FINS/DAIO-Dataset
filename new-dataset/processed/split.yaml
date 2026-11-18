@@ -1,0 +1,70 @@
+schema_version: 3
+data_format: processed_csv_200hz
+coordinate_frame: FLU; x forward y left z up
+offline_apriltag_only: true
+processed_root: processed
+splits:
+  train:
+    files:
+    - v1/001_x_primary__segment_001.csv
+    - v1/003_x_primary__segment_001.csv
+    - v1/005_x_primary__segment_001.csv
+    - v1/007_x_primary__segment_001.csv
+    - v1/009_x_primary__segment_001.csv
+    - v1/011_x_primary__segment_001.csv
+    - v1/013_x_primary__segment_001.csv
+    - v1/015_x_primary__segment_001.csv
+    - v1/017_y_primary__segment_001.csv
+    - v1/019_y_primary__segment_001.csv
+    - v1/021_y_primary__segment_001.csv
+    - v1/023_y_primary__segment_001.csv
+    - v1/025_y_primary__segment_001.csv
+    - v1/027_y_primary__segment_001.csv
+    - v1/029_y_primary__segment_001.csv
+    - v1/031_y_primary__segment_001.csv
+    - v1/033_yaw_primary__segment_001.csv
+    - v1/035_yaw_primary__segment_001.csv
+    - v1/037_yaw_primary__segment_001.csv
+    - v1/039_xy_coupled__segment_001.csv
+    - v1/041_xy_coupled__segment_001.csv
+    - v1/043_xy_coupled__segment_001.csv
+    - v1/045_xyz_coupled__segment_001.csv
+    - v1/047_xyz_coupled__segment_001.csv
+    - v1/049_xyz_coupled__segment_001.csv
+    - v2/001_ellipse_fixed__segment_001.csv
+    - v2/002_ellipse_fixed__segment_001.csv
+    - v2/003_ellipse_tangent__segment_001.csv
+    - v2/004_figure_eight_fixed__segment_001.csv
+    - v2/005_figure_eight_tangent__segment_001.csv
+    - v2/006_figure_eight_segmented__segment_001.csv
+    - v2/007_rectangle_fixed__segment_001.csv
+    - v2/008_rectangle_fixed__segment_001.csv
+    - v2/009_rectangle_segmented__segment_001.csv
+    - v2/010_cross_fixed__segment_001.csv
+    - v2/011_cross_fixed__segment_001.csv
+    - v2/012_cross_segmented__segment_001.csv
+    - v2/013_cross_fixed__segment_001.csv
+    - v2/014_cross_fixed__segment_001.csv
+    - v2/015_random_long_step_yaw_limited_45deg__segment_001.csv
+    - v2/016_random_long_step_yaw_limited_45deg__segment_001.csv
+    - v2/017_random_long_step_yaw_limited_45deg__segment_001.csv
+    - v2/019_random_long_step_yaw_limited_45deg__segment_001.csv
+    - v2/019_random_long_step_yaw_limited_45deg__segment_002.csv
+    - v2/020_random_long_step_yaw_limited_45deg__segment_001.csv
+    - v2/021_random_long_step_yaw_step_45_to_90deg__segment_001.csv
+    - v2/022_random_long_step_yaw_step_45_to_90deg__segment_001.csv
+    - v2/023_random_long_step_yaw_step_45_to_90deg__segment_001.csv
+    - v2/024_random_long_step_yaw_step_45_to_90deg__segment_001.csv
+    expected_count: 49
+  val:
+    files:
+    - v2/026_demo__segment_001.csv
+    - v2/027_demo__segment_001.csv
+    expected_count: 2
+  demo:
+    files:
+    - v2/025_demo__segment_001.csv
+    - v2/028_demo__segment_001.csv
+    - v2/029_demo__segment_001.csv
+    - v2/030_demo__segment_001.csv
+    expected_count: 4

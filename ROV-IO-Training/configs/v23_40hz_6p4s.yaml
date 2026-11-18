@@ -1,0 +1,52 @@
+# V23：原始 CSV 为 200 Hz；每连续五点取因果均值，构造 40 Hz 网络输入。
+# 256 个输入点对应约 6.4 s 历史。网络输出仍保持 50 Hz。
+experiment:
+  name: v23_40hz_6p4s_shared_validation
+  seed: 42
+  device: auto
+  deterministic: false
+  tf32: false
+
+data:
+  source_format: processed_csv_200hz
+  imu_hz: 200.0                 # 兼容旧字段；与 source_sample_hz 相同
+  source_sample_hz: 200.0       # sample_time_s 的固定原始频率
+  network_input_hz: 40.0        # 五点因果均值后的网络输入频率
+  network_hz: 50.0              # 每 20 ms 输出一次速度预测
+  window_samples: 256           # 256 / 40 Hz = 约 6.4 s
+  label_savgol_window_s: 0.50   # 标签仍由 200 Hz 原始 Tag 时间轴构造
+  label_savgol_polyorder: 3
+  preprocessing:
+    downsample: consecutive_five_sample_causal_mean_200hz_to_40hz
+    rpm: signed_rpm_causal_mean_then_divide_1000_no_centering
+    accel_xy: raw_acc_x_acc_y_causal_mean_then_global_train_zscore
+    gyro_z: raw_gyro_z_causal_mean_then_global_train_zscore
+    depth: direct_physical_depth_m_causal_mean_then_global_train_zscore
+    apriltag_labels: raw_tag_xy_yaw_savgol_0p5s_world_to_body_no_legacy_axis_map
+
+model:
+  name: v23_four_branch_cnn_transformer
+  d_model: 64
+  transformer_layers: 3
+  transformer_heads: 4
+  transformer_ffn_dim: 256
+  dropout: 0.5
+  max_tokens: 160
+
+training:
+  epochs: 80
+  phase1_epochs: 40
+  batch_size: 128
+  num_workers: 0
+  pin_memory: true
+  lr: 0.001
+  weight_decay: 0.0001
+  grad_clip_norm: 5.0
+  huber_delta: 0.1
+  nll_weight: 0.05
+  log_every_batches: 0
+
+evaluation:
+  selection_metric: body_xy_rmse
+  evaluate_demo_after_training: true
+  plot_dpi: 150

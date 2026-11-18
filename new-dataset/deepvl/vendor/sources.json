@@ -1,0 +1,16 @@
+[
+  {
+    "name": "DeepVL",
+    "repository": "https://github.com/ntnu-arl/DeepVL",
+    "commit": "776383e9df6098e223304eb0362f7e4d7b198875",
+    "archive_sha256": "f5dea20bd2af4b1b187524a437c41b348ed7a40d57597b69dcadf8e2cc7dd1be",
+    "files": 39
+  },
+  {
+    "name": "ReAqROVIO",
+    "repository": "https://github.com/ntnu-arl/reaqrovio",
+    "commit": "7fc95c1fe97c8a4e89a1477d5699807718f37e43",
+    "archive_sha256": "7c2ad0905e625a240a2e93b65ee50a286aec3b750da6b144279b143a2c1e6543",
+    "files": 102
+  }
+]

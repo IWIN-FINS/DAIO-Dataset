@@ -1,0 +1,12 @@
+{
+  "state": "complete",
+  "time_unix": 1793618818.8317132,
+  "training_complete": true,
+  "evaluation_complete": true,
+  "figures_complete": true,
+  "validation_complete": true,
+  "scientific_status": "Recovered IMU bias/noise priors using TRAIN and VAL; all 4 TEST replays stable; residual yaw drift retained",
+  "minimum_test_update_acceptance": 0.9968329374505146,
+  "recovery_audit": "ROV-ESKF-Odometry/reports/new_v1v2/deepvl_recovery_completion_audit.json",
+  "configuration_sha256": "8963d2d1b5877250e8616b5c2187b76472439c098b11b3f844d023d04229d982"
+}

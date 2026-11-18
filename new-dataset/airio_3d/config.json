@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "seed": 42,
+  "dt": 0.005,
+  "gravity": 9.80665,
+  "window": 1000,
+  "padding": 9,
+  "prediction_stride": 4,
+  "batch_size": 128,
+  "precision": "fp32_no_amp_no_tf32",
+  "reference": "AprilTag XY/yaw; negative pressure depth Z; IMU solved roll/pitch; SG101/poly3; initial-yaw canonical frame",
+  "airimu": {"epochs": 100, "lr": 0.001, "weight_decay": 0.0001, "lr_patience": 10, "lr_factor": 0.1, "min_lr": 0.00001, "train_stride": 10, "val_stride": 200, "early_patience": 10, "min_delta": 0.0001, "early_requires_lr_reduction": true},
+  "airio": {"epochs": 200, "lr": 0.001, "weight_decay": 0.001, "lr_patience": 5, "lr_factor": 0.2, "min_lr": 0.00001, "train_stride": 3, "val_stride": 10},
+  "gates": {"static_speed": 0.03, "static_angular_speed": 0.03, "static_seconds_min": 1.0, "static_force_min": 8.5, "static_force_max": 11.2, "static_correction_median_max": 1.0, "tilt_rms_deg_max": 3.0, "tilt_p95_deg_max": 5.0, "vertical_velocity_rmse_max": 0.05, "vertical_position_rmse_max": 0.10, "network_zero_baseline_ratio_max": 0.9}
+}

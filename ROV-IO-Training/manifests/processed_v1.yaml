@@ -1,0 +1,15 @@
+# The final public processed dataset layout. The run snapshot records every resolved file.
+schema_version: 1
+coordinate_frame: "FLU; +x forward, +y left, +z upward"
+offline_apriltag_only: true
+processed_root: processed
+splits:
+  train:
+    glob: "train/**/*.h5"
+    expected_count: 69
+  val:
+    glob: "evaluation/paper/**/*.h5"
+    expected_count: 2
+  demo:
+    glob: "demo/**/*.h5"
+    expected_count: 2

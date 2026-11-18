@@ -1,0 +1,479 @@
+{
+  "fit_split": "train only",
+  "sources": [
+    {
+      "path": "new-dataset/processed/v1/001_x_primary__segment_001.csv",
+      "sha256": "b4e697d8f08d3a2b53ff6754c38f90d72f88b2011e0ffd705db942036451487d"
+    },
+    {
+      "path": "new-dataset/processed/v1/003_x_primary__segment_001.csv",
+      "sha256": "8cd5fc5ab2ebaa39cb8f5724e754d5a867c250cbe864da80110fd3187aa5c01d"
+    },
+    {
+      "path": "new-dataset/processed/v1/005_x_primary__segment_001.csv",
+      "sha256": "3470514be08e059925deb4e849c1e95dd76c55b3080637897a5a2f0087497bb8"
+    },
+    {
+      "path": "new-dataset/processed/v1/007_x_primary__segment_001.csv",
+      "sha256": "a5fd3c9e0b8bad0743f5d6c8894db287ab453744772cfef1f1e915aff05fc3db"
+    },
+    {
+      "path": "new-dataset/processed/v1/009_x_primary__segment_001.csv",
+      "sha256": "e302d5f16a824fd164595265bc760cf523d169a17b2195f78e3de84fb36d0bae"
+    },
+    {
+      "path": "new-dataset/processed/v1/011_x_primary__segment_001.csv",
+      "sha256": "612bb8f644d0fd8ae257214a2f656198ff3ddc59508420014a392b7285b57c5b"
+    },
+    {
+      "path": "new-dataset/processed/v1/013_x_primary__segment_001.csv",
+      "sha256": "eefab4391575472c488d1b1fc083d9a7b28c353b717cdaafb15ef0d72f3c3107"
+    },
+    {
+      "path": "new-dataset/processed/v1/015_x_primary__segment_001.csv",
+      "sha256": "fdea5a424f6063d80237b4a24e7b3c5d9d9ba002fe8997f18a1eb286385f1597"
+    },
+    {
+      "path": "new-dataset/processed/v1/017_y_primary__segment_001.csv",
+      "sha256": "ea122831b78b006c1d1ce9d09a5643448f31fae80db57661a8f4ac4544dc23cd"
+    },
+    {
+      "path": "new-dataset/processed/v1/019_y_primary__segment_001.csv",
+      "sha256": "1dd7ef64aa42806a870115ba81606ca14ef5dd03bc1f03e7d4b52e83787479c1"
+    },
+    {
+      "path": "new-dataset/processed/v1/021_y_primary__segment_001.csv",
+      "sha256": "7aa2d3ca1072c20de0f5f9830f4678588619b51cbeafe78b515c4c6351b56f07"
+    },
+    {
+      "path": "new-dataset/processed/v1/023_y_primary__segment_001.csv",
+      "sha256": "85048748edb49677da4073d2e320da58ad1efa0d9050556da4c21e6647b3c636"
+    },
+    {
+      "path": "new-dataset/processed/v1/025_y_primary__segment_001.csv",
+      "sha256": "af7fa07a9727754b229b82d6686c72096d32f53bff35ffe7e86fb62403cb0205"
+    },
+    {
+      "path": "new-dataset/processed/v1/027_y_primary__segment_001.csv",
+      "sha256": "bbff33a804858bc1d6b276f94bbb801c9fb81ac33cecce2a3e3b3c92003d3a5c"
+    },
+    {
+      "path": "new-dataset/processed/v1/029_y_primary__segment_001.csv",
+      "sha256": "719981e488cfbbf0c0e6a7ce2f2b78e599e15038e7123a8cfaeedf73bbb0d43d"
+    },
+    {
+      "path": "new-dataset/processed/v1/031_y_primary__segment_001.csv",
+      "sha256": "af3607dda2ac14dbfcc8d22c5984599179036d0743753af03d7a3d1fb0fb046b"
+    },
+    {
+      "path": "new-dataset/processed/v1/033_yaw_primary__segment_001.csv",
+      "sha256": "b8dd0660e655697b93d085ff73a82ffd70fb9b936305ddb6e1f54d3711a4e3a3"
+    },
+    {
+      "path": "new-dataset/processed/v1/035_yaw_primary__segment_001.csv",
+      "sha256": "74933c1d463d1a2bcbeb899e73d96c820896faa09efb913060057ce1070b6b99"
+    },
+    {
+      "path": "new-dataset/processed/v1/037_yaw_primary__segment_001.csv",
+      "sha256": "3ee0057658f0e20a074747df1a99af6835c8cab55d9b2703b460e9b18f0f6974"
+    },
+    {
+      "path": "new-dataset/processed/v1/039_xy_coupled__segment_001.csv",
+      "sha256": "77daa5a9d05a9292198be02e9d7168c99a5852760e6d9033e3e3d6a12b8e1a05"
+    },
+    {
+      "path": "new-dataset/processed/v1/041_xy_coupled__segment_001.csv",
+      "sha256": "f091af23e6e60d88f97ca6cbb101917017843406c54b15a341d091d12ba9e142"
+    },
+    {
+      "path": "new-dataset/processed/v1/043_xy_coupled__segment_001.csv",
+      "sha256": "421ad749cfc1ee06348b85247cdeddfc04464983d33f6fe8ce8c7fe8a0bbdf46"
+    },
+    {
+      "path": "new-dataset/processed/v1/045_xyz_coupled__segment_001.csv",
+      "sha256": "f3d0e380efa0d4c67c801904ef74dbf8581cd60643819e511e665a1b9408db11"
+    },
+    {
+      "path": "new-dataset/processed/v1/047_xyz_coupled__segment_001.csv",
+      "sha256": "cb67b2857c4ac99cfc2e1f579b42cf540cdbeab4e8d453e719d265b0ce4e58ae"
+    },
+    {
+      "path": "new-dataset/processed/v1/049_xyz_coupled__segment_001.csv",
+      "sha256": "82f0f649d4c5245f865c92149ba191f8e4a0eb202ee040669cae9dbb53393ea7"
+    },
+    {
+      "path": "new-dataset/processed/v2/001_ellipse_fixed__segment_001.csv",
+      "sha256": "16f1945bec2c72fc975ea298fd68ba197b278ff427e7c3575deaea3e300b193e"
+    },
+    {
+      "path": "new-dataset/processed/v2/002_ellipse_fixed__segment_001.csv",
+      "sha256": "e108aeb2fd2707c1d2e98559b1bb01557e35f616224c676c636a4d840e357372"
+    },
+    {
+      "path": "new-dataset/processed/v2/003_ellipse_tangent__segment_001.csv",
+      "sha256": "09c95954769a7947fb053ef62fbb7173e9c60f1c461084f95d8fd2f0b5253bcd"
+    },
+    {
+      "path": "new-dataset/processed/v2/004_figure_eight_fixed__segment_001.csv",
+      "sha256": "67fee43e6835cb69d9d796fe31263d656855388a62986bdb53243ad0028b7283"
+    },
+    {
+      "path": "new-dataset/processed/v2/005_figure_eight_tangent__segment_001.csv",
+      "sha256": "d5deae25540e00a9dacfbef8fad5d461c05d9fae7723e6fcfb77b0e0145a9f07"
+    },
+    {
+      "path": "new-dataset/processed/v2/006_figure_eight_segmented__segment_001.csv",
+      "sha256": "599b10543865a5b1a51e697c1d7fdf7928fa782e373e9435644466726a7094ad"
+    },
+    {
+      "path": "new-dataset/processed/v2/007_rectangle_fixed__segment_001.csv",
+      "sha256": "e3b67d63138032cbca6e229f3595710d3f649f5c7e54c170c3875ac392384cbd"
+    },
+    {
+      "path": "new-dataset/processed/v2/008_rectangle_fixed__segment_001.csv",
+      "sha256": "d2fe3f7cca9befc5cdf3bce56b0ed6a7e9839e26b231a9e5c138aeede64afa10"
+    },
+    {
+      "path": "new-dataset/processed/v2/009_rectangle_segmented__segment_001.csv",
+      "sha256": "4ce549385f41242125f8fff7f460d6938effa8e9273d8631846077c1065eccb0"
+    },
+    {
+      "path": "new-dataset/processed/v2/010_cross_fixed__segment_001.csv",
+      "sha256": "8dcfe37792794f03c644b9f6cd14acbd493a57f996ec0d9315db231774a81d4b"
+    },
+    {
+      "path": "new-dataset/processed/v2/011_cross_fixed__segment_001.csv",
+      "sha256": "3195ff6c0f13c3586f4012532499160837f2fd95c040662e8f3d78c11fb61e29"
+    },
+    {
+      "path": "new-dataset/processed/v2/012_cross_segmented__segment_001.csv",
+      "sha256": "aed3e3856b5f23dae1c1a3a1b0e1b52fb798ba81cb664bbea3482882c9a84d21"
+    },
+    {
+      "path": "new-dataset/processed/v2/013_cross_fixed__segment_001.csv",
+      "sha256": "6c95813f6ba29af8f91ade2574aabec5363e836b5a6b846835e560d69e9a32ec"
+    },
+    {
+      "path": "new-dataset/processed/v2/014_cross_fixed__segment_001.csv",
+      "sha256": "bbb6581ddab1cb5ea60fa0cab1e1c1b2da025a303c71f85ccf405f4a63d3d3de"
+    },
+    {
+      "path": "new-dataset/processed/v2/015_random_long_step_yaw_limited_45deg__segment_001.csv",
+      "sha256": "61e9c75d5fb5f55bc25ff7472ea7f7738277ef3495f879254af5a2a5c5c132a6"
+    },
+    {
+      "path": "new-dataset/processed/v2/016_random_long_step_yaw_limited_45deg__segment_001.csv",
+      "sha256": "8b762f5557215dc27d066d090e9719e358fff93c6448c398bb34261baa835e65"
+    },
+    {
+      "path": "new-dataset/processed/v2/017_random_long_step_yaw_limited_45deg__segment_001.csv",
+      "sha256": "d5ac3dd87eb1d1a0cc3eb9644297df8903f6caeb935ff993ce5d5143f7fa27d2"
+    },
+    {
+      "path": "new-dataset/processed/v2/019_random_long_step_yaw_limited_45deg__segment_001.csv",
+      "sha256": "fd436d8dead288025afa4a059fd02137f5ad66e9defbf08fd99bcffd7c6b4d03"
+    },
+    {
+      "path": "new-dataset/processed/v2/020_random_long_step_yaw_limited_45deg__segment_001.csv",
+      "sha256": "043e043c8361ee0d8176891d07f009d43b230b5431e4c33db2871925010df345"
+    },
+    {
+      "path": "new-dataset/processed/v2/021_random_long_step_yaw_step_45_to_90deg__segment_001.csv",
+      "sha256": "c9429234d59fefbb800ad0392305a3dc08db5f96055d5dc7464ea206ecdaa4ed"
+    },
+    {
+      "path": "new-dataset/processed/v2/022_random_long_step_yaw_step_45_to_90deg__segment_001.csv",
+      "sha256": "1851cdd26036b2d982ce4115476dfad56c81669d536bc4b7ce7b2df1caec4463"
+    },
+    {
+      "path": "new-dataset/processed/v2/023_random_long_step_yaw_step_45_to_90deg__segment_001.csv",
+      "sha256": "6721f6f4c5c3486050e455bc82d3b9d8fe5eb7182cde41f75d8db23f8b30b076"
+    },
+    {
+      "path": "new-dataset/processed/v2/024_random_long_step_yaw_step_45_to_90deg__segment_001.csv",
+      "sha256": "91d407826c4b3e0feb0636b3e1d82872dcef1fc81d8ef70e5be7c91c1501c2ce"
+    }
+  ],
+  "initial_gyro_bias": [
+    -0.00905313499027241,
+    -0.020996571692440354,
+    -0.0034658625775225056
+  ],
+  "gyro_bias_prior_std": [
+    0.0016587283039355349,
+    0.001580568014594565,
+    0.0004234829006233324
+  ],
+  "sample_white_noise_std": [
+    0.1716360559463286,
+    0.037605415946399705,
+    0.0679821421103058,
+    0.0025881681187717677,
+    0.0014789496674604788,
+    0.0007394782159389283
+  ],
+  "continuous_noise_psd": [
+    0.00014729467850405623,
+    7.070836542508667e-06,
+    2.310785822952907e-05,
+    3.349307105513295e-08,
+    1.0936460594407304e-08,
+    2.7341401592411016e-09
+  ],
+  "per_record_bias_median": [
+    [
+      -0.00930103960274168,
+      -0.021473065480695646,
+      -0.0035889188507748655
+    ],
+    [
+      -0.008767689225984091,
+      -0.021893306456121343,
+      -0.0032659574283981224
+    ],
+    [
+      -0.009453314623309578,
+      -0.020996734217714346,
+      -0.0035704436495020715
+    ],
+    [
+      -0.009456004135156609,
+      -0.021082204793328733,
+      -0.0031731218562861298
+    ],
+    [
+      -0.009402718233640098,
+      -0.02136936505391269,
+      -0.0035375243958481032
+    ],
+    [
+      -0.00939021262917815,
+      -0.020935967731071394,
+      -0.0032292788575237624
+    ],
+    [
+      -0.009285080035658855,
+      -0.020736752441702783,
+      -0.0030607176733205774
+    ],
+    [
+      -0.009337313197651955,
+      -0.0211560226837638,
+      -0.003194692751032182
+    ],
+    [
+      -0.009063847663391281,
+      -0.020506268152983946,
+      -0.0030368946251405557
+    ],
+    [
+      -0.009330639199100486,
+      -0.020963211950890993,
+      -0.003041637588326566
+    ],
+    [
+      -0.009402402415027725,
+      -0.020981927426711084,
+      -0.003043757841391158
+    ],
+    [
+      -0.009373002742913642,
+      -0.020996946728324417,
+      -0.003364622134580426
+    ],
+    [
+      -0.009415617056181616,
+      -0.021135727992175255,
+      -0.0034059678776717965
+    ],
+    [
+      -0.009326899118312125,
+      -0.02091828758655668,
+      -0.003386972884170574
+    ],
+    [
+      -0.009162044790269636,
+      -0.021096442809168295,
+      -0.0031400009285682123
+    ],
+    [
+      -0.009215320405683482,
+      -0.021108843777894105,
+      -0.0035732388597552994
+    ],
+    [
+      -0.0076573251758781,
+      -0.022931958194066362,
+      -0.003628140754560527
+    ],
+    [
+      -0.008439232729593939,
+      -0.02119240916651421,
+      -0.0035943572838719184
+    ],
+    [
+      -0.006310483657600433,
+      -0.020946644102340168,
+      -0.0033560764019672507
+    ],
+    [
+      -0.009242063120126747,
+      -0.020977743418331883,
+      -0.003468447926214129
+    ],
+    [
+      -0.009270503511475188,
+      -0.020996409167166358,
+      -0.0032377764934554947
+    ],
+    [
+      -0.009160062640072502,
+      -0.020991039085867934,
+      -0.003371435971004757
+    ],
+    [
+      -0.009133530502469544,
+      -0.020945110686839984,
+      -0.0034652987600097863
+    ],
+    [
+      -0.00909175685872654,
+      -0.020857290839921175,
+      -0.003509390917689485
+    ],
+    [
+      -0.009028208323942702,
+      -0.02099868944557243,
+      -0.0033721272898843586
+    ],
+    [
+      -0.009081201223118923,
+      -0.021071037642378374,
+      -0.003482828662573774
+    ],
+    [
+      -0.008977856491654513,
+      -0.020655696339822636,
+      -0.003526278005969784
+    ],
+    [
+      -0.007981146961078343,
+      -0.01860371076192913,
+      -0.0032610336514728756
+    ],
+    [
+      -0.008899937783674636,
+      -0.02027355385997931,
+      -0.0035561897271274906
+    ],
+    [
+      -0.007728947222364968,
+      -0.023600398148277812,
+      -0.003632525274247317
+    ],
+    [
+      -0.0069925966299327225,
+      -0.02018281772498532,
+      -0.0033457074465159387
+    ],
+    [
+      -0.00919855680222152,
+      -0.02098093288144513,
+      -0.003385738165630864
+    ],
+    [
+      -0.009048434938042511,
+      -0.021217620154742194,
+      -0.0040866787003847015
+    ],
+    [
+      -0.007252835191968523,
+      -0.02100212072192989,
+      -0.0036084895993320765
+    ],
+    [
+      -0.009071785169035621,
+      -0.021050618297015673,
+      -0.003466426395035225
+    ],
+    [
+      -0.009057835042502307,
+      -0.02114588308758813,
+      -0.0035540945483576816
+    ],
+    [
+      -0.007991769959579939,
+      -0.020707134336819227,
+      -0.0032611880299946994
+    ],
+    [
+      -0.009021812740682552,
+      -0.02110311735259676,
+      -0.0035878238284952884
+    ],
+    [
+      -0.008745026557407932,
+      -0.021515114805750184,
+      -0.0035906257961560595
+    ],
+    [
+      -0.008826752975628,
+      -0.021361011134403786,
+      -0.0033641210653781745
+    ],
+    [
+      -0.009014947997223985,
+      -0.02050057741086725,
+      -0.0037969480993130717
+    ],
+    [
+      -0.008822216658552193,
+      -0.020722585721933737,
+      -0.003212751820792615
+    ],
+    [
+      -0.008857440497007017,
+      -0.021368018820400007,
+      -0.003294301885178909
+    ],
+    [
+      -0.008885153349657164,
+      -0.020894832713695983,
+      -0.003695344465064962
+    ],
+    [
+      -0.008543632293577526,
+      -0.020239521568603227,
+      -0.0036234501562338872
+    ],
+    [
+      -0.008581901773340367,
+      -0.020074952296618466,
+      -0.0035970147459920554
+    ],
+    [
+      -0.008169942491234676,
+      -0.02163176356370233,
+      -0.003689379225840523
+    ],
+    [
+      -0.008551414810406409,
+      -0.020309542227736267,
+      -0.003854621830380967
+    ]
+  ],
+  "independent_training_yaw": true,
+  "hierarchical_bias_prior": true,
+  "pooled_residual_median": [
+    -0.008702184342366685,
+    -0.0209102689587022,
+    -0.003478449951073692
+  ],
+  "per_sample_residual_spread95": [
+    0.010728995232949337,
+    0.012735050919667368,
+    0.04724253052424918
+  ],
+  "interpretation": "Offline TRAIN raw gyro vs IMU-derived tilt and independent AprilTag yaw; no vertical/zero-tilt truth, no test statistics or online truth",
+  "estimator": "Median of per-record gyro-rate bias estimates; 95th between-record deviation for initial bias prior; MAD second difference / sqrt(6) white noise"
+}

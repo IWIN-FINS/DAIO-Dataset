@@ -1,0 +1,42 @@
+{
+  "models": {
+    "DAIO": {
+      "implementation": "combined old+new training, horizontal IMU + RPM + depth, 11-state ESKF",
+      "status": "trained_and_evaluated",
+      "diagnostic_only": false,
+      "checkpoint": "models/combined/daio.pt",
+      "checkpoint_sha256": "8071d949babccad62df5cd970d6900af2a159a01ed5d5caf9ad79a255fa4aa81",
+      "source_checkpoint_sha256": "9d81a26107aec536ebe520f03213b6660f4d93e7561bbfc5127f05c150263493"
+    },
+    "DEEPVL": {
+      "implementation": "DeepVL Planar ROV, train/val calibrated no-vision backend; new V1/V2 training",
+      "status": "evaluated",
+      "diagnostic_only": false,
+      "checkpoint": "models/deepvl/ensemble.pt",
+      "checkpoint_sha256": "dded2c6126e14743e7ebfac6b806ce049e457ddccaf8b14f916ec6d4c1cf47fe",
+      "source_checkpoint_sha256": "07a9ce8764b19233f4ee505cc681b23b27d3e78f4cfaa8761beccacde7074415"
+    },
+    "AirIO": {
+      "implementation": "qualified normalized 3D AirIO + frozen AirIMU + original 15-state filter; causal endpoint deployment",
+      "status": "QUALIFIED_3D_MODEL_FRESH_REPLAY",
+      "diagnostic_only": false,
+      "checkpoint": "models/airio/airio.pt",
+      "checkpoint_sha256": "ba245b35b86c3e9f0f15bc9674c330876f993740d4ab1931f470cf7b1239b407",
+      "source_checkpoint_sha256": "0e84e89f57ff316cb47b7806239768acb87920f6c5be7da186754c8ebae56222"
+    },
+    "DAIO_withoutRPM": {
+      "implementation": "combined old+new training, horizontal IMU + depth, 11-state ESKF; no RPM branch or RPM-dependent online gating",
+      "status": "trained_and_evaluated",
+      "diagnostic_only": false,
+      "checkpoint": "models/combined/no_rpm.pt",
+      "checkpoint_sha256": "ce2b07a3becf6a5071ac016e58c35936dec6a476d7113aaedaf43901ba2ef103",
+      "source_checkpoint_sha256": "5b2a5ef6e60b856ceb1fcc56d21d15965a0aef4beb41f54672f7b9c679b1472b"
+    }
+  },
+  "files": {
+    "test1_odometry.csv": "610df058037093c261dbefc43f2da51cb6b85368f3326e8ecf0d963548ad2da2",
+    "test2_odometry.csv": "c233d2ed5456132455dde981722b7b80e2cffa47dd9dcaa785fd1a536297a282",
+    "test3_odometry.csv": "95e41fee776b446d30b4dc4bbca22e3998df6f0afa4623756068cb733d3c9a05",
+    "test4_odometry.csv": "a27546245b678394a5410f322916124a5cfd4108df7e5f44fac06c47cafb99d5"
+  }
+}

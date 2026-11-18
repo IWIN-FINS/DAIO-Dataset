@@ -1,0 +1,11 @@
+{
+  "horizontal_rpm": {
+    "run_dir": "ROV-IO-Ablation/experiments/new_v1v2/horizontal_rpm/runs/20261030-200345_seed42"
+  },
+  "full_imu_rpm": {
+    "run_dir": "ROV-IO-Ablation/experiments/new_v1v2/full_imu_rpm/runs/20261030-222218_seed42"
+  },
+  "horizontal_command": {
+    "run_dir": "ROV-IO-Ablation/experiments/new_v1v2/horizontal_command/runs/20261031-010146_seed42"
+  }
+}

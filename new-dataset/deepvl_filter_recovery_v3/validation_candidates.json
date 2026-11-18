@@ -1,0 +1,119 @@
+{
+  "fit_split": "train",
+  "selection_split": "val",
+  "test_data_used": false,
+  "results": [
+    {
+      "candidate": "original",
+      "validation": 1,
+      "velocity_vector_rmse": 397.59806219558135,
+      "position_vector_rmse": 13285.181225572282,
+      "yaw_rmse_rad": 2.2480522401905008,
+      "accepted_network_fraction": 0.0,
+      "maximum_speed": 1004.0353712475776,
+      "gyro_bias_final": [
+        -0.0035011282088622765,
+        0.0004050452087007641,
+        0.0008907222750361251
+      ]
+    },
+    {
+      "candidate": "original",
+      "validation": 2,
+      "velocity_vector_rmse": 255.56153299335685,
+      "position_vector_rmse": 4654.182577449146,
+      "yaw_rmse_rad": 1.3525233801306586,
+      "accepted_network_fraction": 0.0,
+      "maximum_speed": 550.061676085675,
+      "gyro_bias_final": [
+        -0.00206157634446591,
+        0.006303870267616491,
+        0.0023372042711192983
+      ]
+    },
+    {
+      "candidate": "gyro_prior_uncertainty_only",
+      "validation": 1,
+      "velocity_vector_rmse": 0.028375111862203695,
+      "position_vector_rmse": 0.20058155676559244,
+      "yaw_rmse_rad": 0.19705659858956778,
+      "accepted_network_fraction": 1.0,
+      "maximum_speed": 0.21510066967140595,
+      "gyro_bias_final": [
+        -0.009147523883344793,
+        -0.020891111951597423,
+        -0.00011210031747728512
+      ]
+    },
+    {
+      "candidate": "gyro_prior_uncertainty_only",
+      "validation": 2,
+      "velocity_vector_rmse": 0.04295065731806882,
+      "position_vector_rmse": 0.2539393298489922,
+      "yaw_rmse_rad": 0.18059954210186827,
+      "accepted_network_fraction": 1.0,
+      "maximum_speed": 0.26805391358037683,
+      "gyro_bias_final": [
+        -0.009147777486482602,
+        -0.02082113827534343,
+        -6.989928685771941e-05
+      ]
+    },
+    {
+      "candidate": "gyro_bias_and_prior",
+      "validation": 1,
+      "velocity_vector_rmse": 0.030020398142388365,
+      "position_vector_rmse": 0.2698235812579618,
+      "yaw_rmse_rad": 0.11175822668425149,
+      "accepted_network_fraction": 1.0,
+      "maximum_speed": 0.21421403994507388,
+      "gyro_bias_final": [
+        -0.009126657291079228,
+        -0.020973295772085288,
+        -0.003603380388335232
+      ]
+    },
+    {
+      "candidate": "gyro_bias_and_prior",
+      "validation": 2,
+      "velocity_vector_rmse": 0.04111715752388752,
+      "position_vector_rmse": 0.3176576056861102,
+      "yaw_rmse_rad": 0.23941159145804514,
+      "accepted_network_fraction": 1.0,
+      "maximum_speed": 0.2644374738483916,
+      "gyro_bias_final": [
+        -0.009139741698003157,
+        -0.020916054777009273,
+        -0.0035483374464571086
+      ]
+    },
+    {
+      "candidate": "train_calibrated_imu",
+      "validation": 1,
+      "velocity_vector_rmse": 0.02799243838250538,
+      "position_vector_rmse": 0.22712202203800247,
+      "yaw_rmse_rad": 0.07226606107910781,
+      "accepted_network_fraction": 1.0,
+      "maximum_speed": 0.211870592707713,
+      "gyro_bias_final": [
+        -0.009128228528168218,
+        -0.0209606278416289,
+        -0.0035479791475274396
+      ]
+    },
+    {
+      "candidate": "train_calibrated_imu",
+      "validation": 2,
+      "velocity_vector_rmse": 0.03806601420673086,
+      "position_vector_rmse": 0.30449787918401944,
+      "yaw_rmse_rad": 0.2357791074984917,
+      "accepted_network_fraction": 1.0,
+      "maximum_speed": 0.26421790459189815,
+      "gyro_bias_final": [
+        -0.009123323096923397,
+        -0.020956289389514854,
+        -0.0035088528512303946
+      ]
+    }
+  ]
+}

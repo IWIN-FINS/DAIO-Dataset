@@ -1,0 +1,13 @@
+{
+  "dataset": "new V1/V2 processed snapshot",
+  "counts": {
+    "train": 49,
+    "val": 2,
+    "test": 4
+  },
+  "raw_data": false,
+  "old_dataset": false,
+  "training_started": false,
+  "source_portable_bundle": "DAIO-Open-Source",
+  "model_policy": "New-only weights plus explicitly identified historical joint-trained paper DAIO/no-RPM weights"
+}

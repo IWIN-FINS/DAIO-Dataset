@@ -1,0 +1,96 @@
+{
+  "splits": {
+    "train": {
+      "records": 49,
+      "duration_s_total": 6884.674999999999,
+      "source_formats": [
+        "processed_csv_200hz"
+      ],
+      "usable_50hz_windows": 325836,
+      "short_records_without_windows": [
+        "processed\\v2\\019_random_long_step_yaw_limited_45deg__segment_002.csv"
+      ],
+      "files": [
+        "processed\\v1\\001_x_primary__segment_001.csv",
+        "processed\\v1\\003_x_primary__segment_001.csv",
+        "processed\\v1\\005_x_primary__segment_001.csv",
+        "processed\\v1\\007_x_primary__segment_001.csv",
+        "processed\\v1\\009_x_primary__segment_001.csv",
+        "processed\\v1\\011_x_primary__segment_001.csv",
+        "processed\\v1\\013_x_primary__segment_001.csv",
+        "processed\\v1\\015_x_primary__segment_001.csv",
+        "processed\\v1\\017_y_primary__segment_001.csv",
+        "processed\\v1\\019_y_primary__segment_001.csv",
+        "processed\\v1\\021_y_primary__segment_001.csv",
+        "processed\\v1\\023_y_primary__segment_001.csv",
+        "processed\\v1\\025_y_primary__segment_001.csv",
+        "processed\\v1\\027_y_primary__segment_001.csv",
+        "processed\\v1\\029_y_primary__segment_001.csv",
+        "processed\\v1\\031_y_primary__segment_001.csv",
+        "processed\\v1\\033_yaw_primary__segment_001.csv",
+        "processed\\v1\\035_yaw_primary__segment_001.csv",
+        "processed\\v1\\037_yaw_primary__segment_001.csv",
+        "processed\\v1\\039_xy_coupled__segment_001.csv",
+        "processed\\v1\\041_xy_coupled__segment_001.csv",
+        "processed\\v1\\043_xy_coupled__segment_001.csv",
+        "processed\\v1\\045_xyz_coupled__segment_001.csv",
+        "processed\\v1\\047_xyz_coupled__segment_001.csv",
+        "processed\\v1\\049_xyz_coupled__segment_001.csv",
+        "processed\\v2\\001_ellipse_fixed__segment_001.csv",
+        "processed\\v2\\002_ellipse_fixed__segment_001.csv",
+        "processed\\v2\\003_ellipse_tangent__segment_001.csv",
+        "processed\\v2\\004_figure_eight_fixed__segment_001.csv",
+        "processed\\v2\\005_figure_eight_tangent__segment_001.csv",
+        "processed\\v2\\006_figure_eight_segmented__segment_001.csv",
+        "processed\\v2\\007_rectangle_fixed__segment_001.csv",
+        "processed\\v2\\008_rectangle_fixed__segment_001.csv",
+        "processed\\v2\\009_rectangle_segmented__segment_001.csv",
+        "processed\\v2\\010_cross_fixed__segment_001.csv",
+        "processed\\v2\\011_cross_fixed__segment_001.csv",
+        "processed\\v2\\012_cross_segmented__segment_001.csv",
+        "processed\\v2\\013_cross_fixed__segment_001.csv",
+        "processed\\v2\\014_cross_fixed__segment_001.csv",
+        "processed\\v2\\015_random_long_step_yaw_limited_45deg__segment_001.csv",
+        "processed\\v2\\016_random_long_step_yaw_limited_45deg__segment_001.csv",
+        "processed\\v2\\017_random_long_step_yaw_limited_45deg__segment_001.csv",
+        "processed\\v2\\019_random_long_step_yaw_limited_45deg__segment_001.csv",
+        "processed\\v2\\019_random_long_step_yaw_limited_45deg__segment_002.csv",
+        "processed\\v2\\020_random_long_step_yaw_limited_45deg__segment_001.csv",
+        "processed\\v2\\021_random_long_step_yaw_step_45_to_90deg__segment_001.csv",
+        "processed\\v2\\022_random_long_step_yaw_step_45_to_90deg__segment_001.csv",
+        "processed\\v2\\023_random_long_step_yaw_step_45_to_90deg__segment_001.csv",
+        "processed\\v2\\024_random_long_step_yaw_step_45_to_90deg__segment_001.csv"
+      ]
+    },
+    "val": {
+      "records": 2,
+      "duration_s_total": 194.965,
+      "source_formats": [
+        "processed_csv_200hz"
+      ],
+      "usable_50hz_windows": 8982,
+      "short_records_without_windows": [],
+      "files": [
+        "processed\\v2\\026_demo__segment_001.csv",
+        "processed\\v2\\027_demo__segment_001.csv"
+      ]
+    },
+    "demo": {
+      "records": 4,
+      "duration_s_total": 335.66999999999996,
+      "source_formats": [
+        "processed_csv_200hz"
+      ],
+      "usable_50hz_windows": 14867,
+      "short_records_without_windows": [],
+      "files": [
+        "processed\\v2\\025_demo__segment_001.csv",
+        "processed\\v2\\028_demo__segment_001.csv",
+        "processed\\v2\\029_demo__segment_001.csv",
+        "processed\\v2\\030_demo__segment_001.csv"
+      ]
+    }
+  },
+  "ok": true,
+  "shared_validation_demo": false
+}

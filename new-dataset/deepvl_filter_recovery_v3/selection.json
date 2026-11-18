@@ -1,0 +1,12 @@
+{
+  "candidate": "train_calibrated_imu",
+  "validation_velocity_vector_rmse_mean": 0.033029226294618116,
+  "selected_before_test": true,
+  "test_data_used": false,
+  "time_unix": 1793617930.789039,
+  "selection_rule": "Lowest mean validation XY velocity vector RMSE among configurations with >=95% network acceptance and <2m/s max speed on both VAL records",
+  "calibration_sha256": "13387d500c4a2d28afbaf671345611403f99b96049e85a12d03076c4579037a9",
+  "validation_results_sha256": "d2c0660baa03c62d752c611a3ffc52efadbc1d079d064708823121d1cd3db5af",
+  "config_sha256": "8963d2d1b5877250e8616b5c2187b76472439c098b11b3f844d023d04229d982",
+  "runtime_sha256": "dc6f7308585cb238ae8f8444493842f87ee66d6332df518e844faf84a457a6e2"
+}

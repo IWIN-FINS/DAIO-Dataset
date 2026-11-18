@@ -1,0 +1,18 @@
+{
+  "formal_training_started": false,
+  "dataset_validation": "passed 49/2/4",
+  "replay_checks": {
+    "daio_test1_full": 19019,
+    "no_rpm_test1_full_joint_weight": 19019,
+    "deepvl_test1_full": 19019,
+    "airio_test1_9s_prefix": 201
+  },
+  "environment": "Python 3.10 / rov-io; AirIO check additionally used installed third-party libraries from baselines/site-packages (not bundled)",
+  "scope": "Latest processed labelled V1/V2, no raw/old datasets or videos",
+  "limitations": [
+    "Full retraining not performed",
+    "AirIO full trajectories not rerun during packaging",
+    "Project-owned public license pending",
+    "Historical joint-trained DAIO/no-RPM weights are explicitly identified"
+  ]
+}

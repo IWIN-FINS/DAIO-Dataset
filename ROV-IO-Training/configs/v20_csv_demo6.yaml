@@ -1,0 +1,49 @@
+# 新 CSV 数据集的默认 V20 实验。demo 与 val 共享 6 条轨迹，非盲测。
+experiment:
+  name: v20_dataset_remake
+  seed: 42
+  device: auto
+  deterministic: false
+  tf32: false
+
+data:
+  source_format: processed_csv_200hz
+  imu_hz: 200.0
+  network_hz: 50.0
+  window_samples: 256          # 1.28 s 因果窗口；末端每 4 样本输出一次
+  label_savgol_window_s: 0.50  # 在 200 Hz 时间轴上自动换算为 101 点（必须为奇数）
+  label_savgol_polyorder: 3
+  preprocessing:
+    time: sample_time_s_only_no_firmware_timestamp
+    rpm: raw_signed_rpm_divide_1000_no_centering
+    accel_xy: raw_acc_x_acc_y_global_train_zscore_no_debias_no_axis_transform
+    gyro_z: raw_gyro_z_global_train_zscore_no_debias
+    depth: direct_preconverted_mean_physical_depth_m_global_train_zscore
+    apriltag_labels: raw_tag_xy_yaw_savgol_0p5s_world_to_body_no_legacy_axis_map
+
+model:
+  name: v20_four_branch_cnn_transformer
+  d_model: 64
+  transformer_layers: 3
+  transformer_heads: 4
+  transformer_ffn_dim: 256
+  dropout: 0.5
+  max_tokens: 160
+
+training:
+  epochs: 80
+  phase1_epochs: 40
+  batch_size: 128
+  num_workers: 0
+  pin_memory: true
+  lr: 0.001
+  weight_decay: 0.0001
+  grad_clip_norm: 5.0
+  huber_delta: 0.1
+  nll_weight: 0.05
+  log_every_batches: 0
+
+evaluation:
+  selection_metric: body_xy_rmse
+  evaluate_demo_after_training: true
+  plot_dpi: 150

@@ -1,0 +1,84 @@
+# 当前论文消融实验的完整 DAIO-Net 模型在独立 Test 1--4 副本上的 ESKF benchmark。
+# 0--8 s 连续预热并积累 7.68 s 网络历史；从 8 s 开始计分，并只在该时刻
+# 使用一次 AprilTag yaw 重锚。运行时回放核心不读取 AprilTag。
+data:
+  root: "../../dataset"
+  manifest: "../../ROV-IO-Training/manifests/v24_val26_27_demo4.yaml"
+  split: "demo"
+  records:
+    - {path: processed/v2/025_demo__segment_001.csv, start_s: 8.0, end_s: null}
+    - {path: processed/v2/028_demo__segment_001.csv, start_s: 8.0, end_s: null}
+    - {path: processed/v2/029_demo__segment_001.csv, start_s: 8.0, end_s: null}
+    - {path: processed/v2/030_demo__segment_001.csv, start_s: 8.0, end_s: null}
+  imu_hz: 200.0
+  network_hz: 50.0
+  window_samples: 256
+  pressure:
+    atmosphere_pa: 101325.0
+    water_density_kg_m3: 1000.0
+    gravity_mps2: 9.80665
+
+model:
+  checkpoint: "../../models/old/full_v24.pt"
+  device: auto
+  batch_size: 128
+
+initialization:
+  startup_s: 8.0
+  position_std_m: 0.5
+  velocity_std_mps: 0.3
+  accel_bias_std_mps2: 0.2
+  yaw_std_rad: 0.13962634
+  yaw_rate_correction_std_radps: 0.05
+
+filter:
+  gravity_flu: [0.0, 0.0, -9.80665]
+  accel_sample_covariance:
+    - [1.508053e-2, 6.003840e-4, 2.773057e-4]
+    - [6.003840e-4, 1.164699e-2, -8.962351e-4]
+    - [2.773057e-4, -8.962351e-4, 1.629901e-2]
+  accel_bias_rw_psd:
+    - [1.028425e-3, 0.0, 0.0]
+    - [0.0, 1.014470e-3, 0.0]
+    - [0.0, 0.0, 5.826577e-4]
+  yaw_rate_source_psd_rad2_per_s: 8.3e-7
+  yaw_rate_correction_rw_psd_rad2_per_s3: 3.34e-6
+  yaw_rate_source:
+    # CSV yaw 已为多圈弧度；使用严格因果后向差分得到 Euler yaw-rate。
+    type: solved_yaw_backward_difference
+    backward_window_s: 0.05
+    median_filter_samples: 5
+    max_abs_rate_radps: 1.0
+  height_variance_m2: 5.110808e-5
+  depth_nis_gate_1d: 6.63
+  velocity_nis_gate_2d: 16.0
+  yaw_rate_nis_gate_1d: 6.63
+  network:
+    xy:
+      covariance_scale: 1.0
+      min_std: 0.005
+      max_std: 2.0
+      max_step_mps: 0.10
+    yaw_rate:
+      variance_scale: 1.0
+      min_std: 0.005
+      max_std: 2.0
+
+benchmark:
+  yaw_reanchor_std_rad: 0.035
+
+evaluation:
+  mode: benchmark_apriltag_init
+  reference_savgol_window: 101
+  reference_savgol_polyorder: 3
+  plot_dpi: 150
+
+debug:
+  max_imu_gap_s: 0.0125
+  save_event_trace: true
+  save_covariance: true
+  save_plots: true
+
+output:
+  root: "../runs"
+  run_name: "paper_test1_4_current_model_8s"

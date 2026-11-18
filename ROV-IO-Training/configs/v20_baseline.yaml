@@ -1,0 +1,50 @@
+# V20 兼容的默认实验。建议复制本文件创建新实验，而不是覆盖原始基线。
+experiment:
+  name: v20_batch64_dropout0.5_phase1Epochs40
+  seed: 42
+  device: auto                 # auto | cuda | cpu
+  deterministic: false         # true：更易复现，但 CUDA 吞吐可能下降
+  tf32: false                  # 只在单独记录的吞吐实验中开启
+
+data:
+  imu_hz: 200.0
+  network_hz: 50.0
+  window_samples: 256          # 200 Hz 下的 1.28 s 因果历史；V20 不应修改
+  label_savgol_window: 15
+  label_savgol_polyorder: 3
+  pressure:
+    atmosphere_pa: 101325.0
+    water_density_kg_m3: 1000.0
+    gravity_mps2: 9.80665
+  preprocessing:
+    rpm: "raw_rpm_divide_1000_no_centering"
+    accel_xy: "raw_flu_imu_accel_train_zscore"
+    gyro_z: "raw_flu_imu_gyro_train_zscore"
+    depth: "mean_absolute_pressure_to_depth_causal_zoh_train_zscore"
+
+model:
+  name: v20_four_branch_cnn_transformer
+  d_model: 64
+  transformer_layers: 3 
+  transformer_heads: 4
+  transformer_ffn_dim: 256
+  dropout: 0.5
+  max_tokens: 160
+
+training:
+  epochs: 80
+  phase1_epochs: 40
+  batch_size: 128
+  num_workers: 0               # Windows 稳定默认值；确认无 HDF5 问题后才可尝试增大
+  pin_memory: true
+  lr: 0.001
+  weight_decay: 0.0001
+  grad_clip_norm: 5.0
+  huber_delta: 0.1
+  nll_weight: 0.05
+  log_every_batches: 0         # 0：只打印每轮完整验证结果；>0：额外打印每 N 个 batch
+
+evaluation:
+  selection_metric: body_xy_rmse
+  evaluate_demo_after_training: true
+  plot_dpi: 150

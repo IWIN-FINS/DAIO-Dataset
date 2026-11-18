@@ -1,0 +1,90 @@
+# 显式冻结本次实验的文件划分。所有路径都相对于 data-root/processed。
+# demo 是 val 的展示别名，因此结果必须标注为“共享验证/展示，非盲测”。
+schema_version: 2
+coordinate_frame: "FLU; +x forward, +y left, +z upward"
+offline_apriltag_only: true
+processed_root: processed
+splits:
+  train:
+    expected_count: 68
+    files:
+      - train/data1/1.h5
+      - train/data1/2.h5
+      - train/data1/3.h5
+      - train/data1/4.h5
+      - train/data1/5.h5
+      - train/data1/6.h5
+      - train/data1/7.h5
+      - train/data1/8.h5
+      - train/data2/9.h5
+      - train/data2/10.h5
+      - train/data2/11.h5
+      - train/data2/12.h5
+      - train/data2/13.h5
+      - train/data2/14.h5
+      - train/data2/15.h5
+      - train/data2/16.h5
+      - train/data3/boundary_wave_return__seg00.h5
+      - train/data3/boundary_wave_return__seg01.h5
+      - train/data3/irregular_batch2_01__seg00.h5
+      - train/data3/irregular_batch2_01__seg01.h5
+      - train/data3/irregular_batch2_02__seg00.h5
+      - train/data3/irregular_batch2_02__seg01.h5
+      - train/data3/irregular_batch2_03.h5
+      - train/data3/irregular_batch2_04__seg00.h5
+      - train/data3/irregular_batch2_04__seg01.h5
+      - train/data3/irregular_batch2_05.h5
+      - evaluation/paper/data3/irregular_batch2_06.h5
+      - train/data3/irregular_batch2_07__seg00.h5
+      - train/data3/irregular_batch2_07__seg01.h5
+      - train/data3/irregular_batch2_08.h5
+      - train/data3/irregular_batch2_10.h5
+      - train/data3/racetrack__seg00.h5
+      - train/data3/racetrack__seg01.h5
+      - train/data3/random_smooth_01.h5
+      - train/data3/random_smooth_02__seg00.h5
+      - train/data3/random_smooth_02__seg01.h5
+      - train/data3/random_smooth_03__seg00.h5
+      - train/data3/random_smooth_03__seg01.h5
+      - train/data3/random_smooth_04__seg00.h5
+      - train/data3/random_smooth_04__seg01.h5
+      - train/data4/noisewalk_c4_01.h5
+      - train/data4/noisewalk_c4_02.h5
+      - train/data4/noisewalk_c4_03.h5
+      - train/data4/noisewalk_c4_04.h5
+      - train/data4/noisewalk_c4_05.h5
+      - train/data4/noisewalk_c4_06.h5
+      - train/data4/noisewalk_c4_07__seg00.h5
+      - train/data4/noisewalk_c4_07__seg01.h5
+      - train/data4/noisewalk_c4_08.h5
+      - train/data4/noisewalk_c4_09.h5
+      - train/data4/stochastic_set3_01.h5
+      - train/data4/stochastic_set3_02.h5
+      - train/data4/stochastic_set3_03__seg00.h5
+      - train/data4/stochastic_set3_03__seg01.h5
+      - train/data4/stochastic_set3_04.h5
+      - train/data4/stochastic_set3_05__seg00.h5
+      - train/data4/stochastic_set3_05__seg01.h5
+      - train/data4/stochastic_set3_06__seg00.h5
+      - train/data4/stochastic_set3_06__seg01.h5
+      - train/data4/stochastic_set3_07__seg00.h5
+      - train/data4/stochastic_set3_07__seg01.h5
+      - train/data4/stochastic_set3_09__seg00.h5
+      - train/data4/stochastic_set3_09__seg01.h5
+      - train/data4/stochastic_set3_10__seg00.h5
+      - train/data4/stochastic_set3_10__seg01.h5
+      - train/data3/ellipse_large.h5
+      - train/data4/noisewalk_c4_10.h5
+      - train/data3/figure_eight.h5
+
+  val:
+    expected_count: 5
+    files:
+      - demo/data4/demo_traj1.h5
+      - demo/data4/demo_traj2.h5
+      - train/data3/slalom_s_curve.h5
+      - train/data3/random_smooth_05.h5
+      - evaluation/paper/data4/stochastic_set3_08.h5
+  demo:
+    alias_of: val
+    expected_count: 5
