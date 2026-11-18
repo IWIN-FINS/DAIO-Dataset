@@ -1,2 +1,2 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Preserve exact release bytes so SHA256SUMS and dataset/model indexes remain valid.
+* -text
